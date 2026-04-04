@@ -42,12 +42,19 @@ class Utilisateur extends Employe implements UserInterface, PasswordAuthenticate
         return (string) $this->getEmail();
     }
  
-    // Symfony roles must be an array of strings like ['ROLE_RH']
     public function getRoles(): array
     {
-        return ['ROLE_' . $this->role?->value];
+        $roleName = $this->role ? $this->role->value : 'USER';
+        $roles = ['ROLE_' . strtoupper($roleName)];
+        
+        // guarantee every user at least has ROLE_USER
+        if (!in_array('ROLE_USER', $roles)) {
+            $roles[] = 'ROLE_USER';
+        }
+
+        return array_unique($roles);
     }
- 
+
 
     public function getPassword(): ?string { return $this->motDePasse; }
     public function setMotDePasse(string $motDePasse): static { $this->motDePasse = $motDePasse; return $this; }
@@ -61,9 +68,30 @@ class Utilisateur extends Employe implements UserInterface, PasswordAuthenticate
     }
 
     public function getAlertes(): Collection { return $this->alertes; }
- 
+
     public function getJustificationsCreees(): Collection { return $this->justificationsCreees; }
- 
+    public function addJustificationCreee(JustificationAbsence $justification): static
+    {
+        if (!$this->justificationsCreees->contains($justification)) {
+            $this->justificationsCreees->add($justification);
+            $justification->setSaisieParAdmin($this);
+        }
+        return $this;
+    }
+    public function removeJustificationCreee(JustificationAbsence $justification): static
+    {
+        // $this->justificationsCreees->removeElement($justification);
+        // Note: JustificationAbsence requires an admin (nullable: false).
+        // Cannot set saisieParAdmin to null. Handle deletion via cascade / orphanRemoval if needed.
+        if ($this->justificationsCreees->removeElement($justification)) {
+            // set the owning side to null (unless already changed)
+            // if ($justification->getSaisieParAdmin() === $this) {
+            //     $justification->setSaisieParAdmin(null);
+            // }
+        }
+        return $this;
+    }
+
     public function getAuditLogs(): Collection { return $this->auditLogs; }
 
 
