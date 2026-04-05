@@ -44,12 +44,10 @@ class Utilisateur extends Employe implements UserInterface, PasswordAuthenticate
  
     public function getRoles(): array
     {
-        $roleName = $this->role ? $this->role->value : 'USER';
-        $roles = ['ROLE_' . strtoupper($roleName)];
+        $roles = [];
         
-        // guarantee every user at least has ROLE_USER
-        if (!in_array('ROLE_USER', $roles)) {
-            $roles[] = 'ROLE_USER';
+        if ($this->role) {
+            $roles[] = 'ROLE_' . strtoupper($this->role->value);
         }
 
         return array_unique($roles);
