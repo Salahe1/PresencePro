@@ -1,0 +1,94 @@
+nelmio_api_doc:
+  documentation:
+    info:
+      title: GRH API — Pointage Biométrique
+      description: API REST du système de gestion des ressources humaines
+      version: 1.0.0
+    components:
+      securitySchemes:
+        Bearer:
+          type: http
+          scheme: bearer
+          bearerFormat: JWT
+      schemas:
+        ApiError:
+          type: object
+          properties:
+            code: { type: integer, example: 401 }
+            message: { type: string, example: 'Identifiants invalides.' }
+        TokenJWT:
+          type: object
+          properties:
+            token: { type: string, example: 'eyJhbGciOiJIUzI1Ni...' }
+        CalendrierTravail:
+          type: object
+          properties:
+            id: { type: integer, example: 1 }
+            dateJour: { type: string, format: date, example: '2025-01-01' }
+            typeJour:
+              type: string
+              enum: [ferie, conge, weekend, ouvrable]
+              example: ouvrable
+            estTravaille: { type: boolean, example: true }
+            description: { type: string, nullable: true, example: 'Jour férié' }
+            departement: { $ref: '#/components/schemas/Departement' }
+        Departement:
+          type: object
+          properties:
+            id: { type: integer, example: 1 }
+            label: { type: string, example: 'Ressources Humaines' }
+        LoginRequest:
+          type: object
+          required: [email, password]
+          properties:
+            email: { type: string, example: 'admin@grh.ma' }
+            password: { type: string, example: 'password123' }
+        Utilisateur:
+          type: object
+          properties:
+            id: { type: integer, example: 1 }
+            matricule: { type: string, example: 'ADM-001' }
+            nom: { type: string, example: 'Admin' }
+            prenom: { type: string, example: 'Super' }
+            email: { type: string, format: email, example: 'admin@grh.ma' }
+            telephone: { type: string, example: '+212600000000' }
+            poste: { type: string, example: 'Responsable RH' }
+            dateEmbauche: { type: string, format: date, example: '2024-01-01' }
+            actif: { type: boolean, example: true }
+            role: { type: string, example: admin, description: 'admin | manager' }
+            departement_id: { type: integer, nullable: true, example: 1 }
+        Employe:
+          type: object
+          properties:
+            id: { type: integer, example: 1 }
+            nom: { type: string, example: 'Dupont' }
+            prenom: { type: string, example: 'Jean' }
+            email: { type: string, format: email, example: 'jean.dupont@entreprise.com' }
+            matricule: { type: string, example: 'EMP-001' }
+            telephone: { type: string, example: '+212600000000' }
+            poste: { type: string, example: 'Développeur' }
+            dateEmbauche: { type: string, format: date, example: '2024-01-15' }
+            actif: { type: boolean, example: true }
+            photo: { type: string, nullable: true, example: 'photo.jpg' }
+            departement: { $ref: '#/components/schemas/Departement' }
+        HoraireTravail:
+          type: object
+          properties:
+            id: { type: integer, example: 1 }
+            label: { type: string, example: 'Horaire standard 8h-17h' }
+            toleranceRetard: { type: string, example: '00:10' }
+            plagesHoraires:
+              type: array
+              items: { $ref: '#/components/schemas/PlageHoraire' }
+        PlageHoraire:
+          type: object
+          properties:
+            id: { type: integer, example: 1 }
+            heureDebut: { type: string, example: '08:00' }
+            heureFin: { type: string, example: '12:00' }
+            ordre: { type: integer, example: 1 }
+    security:
+      - Bearer: []
+  areas:
+    path_patterns:
+      - ^/api
