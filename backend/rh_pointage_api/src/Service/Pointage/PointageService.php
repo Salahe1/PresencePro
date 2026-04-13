@@ -39,7 +39,6 @@ class PointageService
             $pointage->setType($pointageType);
             $pointage->setTimeStamp($timeStamp);
 
-            $this->entityManager->persist($pointage);
 
             if ($pointage->isEntree()) {
                 // Logique de détection
@@ -50,7 +49,12 @@ class PointageService
                 }
             }
 
-             $this->entityManager->flush();                    
+
+            $this->entityManager->persist($pointage);
+
+
+
+        $this->entityManager->flush();                    
 
         return $pointage;
     }
