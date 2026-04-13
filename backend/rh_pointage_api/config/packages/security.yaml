@@ -17,6 +17,10 @@ security:
             # Ensure dev tools and static assets are always allowed
             pattern: ^/(_profiler|_wdt|assets|build)/
             security: false
+        
+        api_doc:
+            pattern: ^/api/doc
+            security: false
 
         # JSON login → Lexik issues JWT (POST body: { "email": "...", "password": "..." })
         login:

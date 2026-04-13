@@ -39,6 +39,14 @@ class Departement
     public function getLabel(): ?string{ return $this->label;}
     public function setLabel(?string $label): static {$this->label = $label;return $this;}
 
+    public function addHoraireTravail(HoraireTravail $horaireTravail): static
+    {
+    if (!$this->horairesTravail->contains($horaireTravail)) {
+        $this->horairesTravail->add($horaireTravail);
+        $horaireTravail->setDepartement($this);
+    }
+    return $this;
+    }
     public function getHorairesTravail(): Collection { return $this->horairesTravail; }
  
     public function getCalendriersTravail(): Collection { return $this->calendriersTravail; }
