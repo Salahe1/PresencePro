@@ -1,28 +1,47 @@
 security:
-    # https://symfony.com/doc/current/security.html#registering-the-user-hashing-passwords
+    # Définit comment Symfony hash les mots de passe
+    # Ici, tous les utilisateurs qui implémentent PasswordAuthenticatedUserInterface
+    # utiliseront l'algorithme automatique recommandé par Symfony
     password_hashers:
         Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface: 'auto'
 
+    # Hiérarchie des rôles
+    # ROLE_ADMIN hérite automatiquement de ROLE_MANAGER
+    # Donc un admin pourra accéder à tout ce qu'un manager peut faire
     role_hierarchy:
         ROLE_ADMIN: [ROLE_MANAGER]
 
     providers:
+        # Provider principal pour les utilisateurs RH stockés en base
+        # Symfony va chercher dans l'entité Utilisateur
+        # en utilisant le champ email comme identifiant
         app_user_provider:
             entity:
                 class: App\Entity\Utilisateur
                 property: email
 
+        # Provider spécial pour les JWT "database-less"
+        # Ici, on ne recharge pas un Utilisateur depuis la base
+        # Le user est reconstruit à partir du contenu du token JWT
+        # Utile pour les terminaux/tablettes
+        jwt:
+            lexik_jwt: ~
+
     firewalls:
+        # Firewall de développement
+        # Désactive la sécurité pour le profiler, debug toolbar, assets, etc.
         dev:
-            # Ensure dev tools and static assets are always allowed
             pattern: ^/(_profiler|_wdt|assets|build)/
             security: false
-        
+
+        # Documentation API publique
         api_doc:
             pattern: ^/api/doc
             security: false
 
-        # JSON login → Lexik issues JWT (POST body: { "email": "...", "password": "..." })
+        # Firewall du login humain classique
+        # Sert pour /api/login_check avec email + password
+        # Et c'est Lexik qui retourne ensuite le JWT
         login:
             pattern: ^/api/login_check
             stateless: true
@@ -34,28 +53,59 @@ security:
                 success_handler: lexik_jwt_authentication.handler.authentication_success
                 failure_handler: lexik_jwt_authentication.handler.authentication_failure
 
+        # Firewall spécifique pour le scan tablette
+        # IMPORTANT :
+        # Il doit être placé AVANT le firewall "api"
+        # sinon /api/pointage/scan sera capturé par "api"
+        pointage_scan:
+            pattern: ^/api/pointage/scan$
+            stateless: true
+            provider: jwt
+            jwt: ~
+
+        # Firewall général pour les autres routes API
+        # Ici, on attend en général des JWT d'utilisateurs RH
         api:
             pattern: ^/api
             stateless: true
             provider: app_user_provider
             jwt: ~
 
+        # Firewall principal Symfony
+        # Peu utile pour ton API stateless, mais il peut rester
         main:
             lazy: true
             provider: app_user_provider
 
     access_control:
-        # CORS preflight must not require a JWT
+        # Autorise les requêtes OPTIONS pour le CORS
+        # Sans ça, le navigateur peut bloquer certaines requêtes cross-origin
         - { path: ^/api, roles: PUBLIC_ACCESS, methods: [OPTIONS] }
-        - { path: ^/api/login_check, roles: PUBLIC_ACCESS }
-        - { path: ^/api/health, roles: PUBLIC_ACCESS }
+
+        # Route de login humain accessible sans JWT
+        - { path: ^/api/login_check$, roles: PUBLIC_ACCESS }
+
+        # Route de récupération de token tablette accessible sans JWT
+        # La tablette envoie identifiant + secret pour obtenir son token
+        - { path: ^/api/tablet/token$, roles: PUBLIC_ACCESS, methods: [POST] }
+
+        # Route de santé publique
+        - { path: ^/api/health$, roles: PUBLIC_ACCESS }
+
+        # Route de scan accessible uniquement au token tablette
+        # Le JWT doit contenir ROLE_TABLET
+        # IMPORTANT :
+        # Cette règle doit être placée AVANT la règle générale ^/api
+        - { path: ^/api/pointage/scan$, roles: ROLE_TABLET, methods: [POST] }
+
+        # Toutes les autres routes API nécessitent au minimum ROLE_MANAGER
         - { path: ^/api, roles: ROLE_MANAGER }
 
 when@test:
     security:
         password_hashers:
-            # Password hashers are resource-intensive by design to ensure security.
-            # In tests, it's safe to reduce their cost to improve performance.
+            # En environnement de test, on réduit le coût du hash
+            # pour accélérer les tests automatiques
             Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface:
                 algorithm: auto
                 cost: 4
