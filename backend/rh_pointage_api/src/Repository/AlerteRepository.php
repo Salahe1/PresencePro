@@ -15,7 +15,7 @@ class AlerteRepository extends ServiceEntityRepository
     {
         parent::__construct($registry, Alerte::class);
     }
-
+}
 //    /**
 //     * @return Alerte[] Returns an array of Alerte objects
 //     */
@@ -40,4 +40,4 @@ class AlerteRepository extends ServiceEntityRepository
 //            ->getOneOrNullResult()
 //        ;
 //    }
-}
+

@@ -5,9 +5,12 @@ namespace App\Service\Retard;
 use App\Entity\Pointage;
 use App\Entity\Retard;
 use App\Entity\PlageHoraire;
+use App\Repository\RetardRepository;
 
 class RetardDetectionService
 {
+    public function __construct (private RetardRepository $retardRepository ){}
+
     public function creeRetardSiExiste(Pointage $pointage): ?Retard
     {
         if (!$pointage->isEntree()) { return null; }
@@ -113,4 +116,5 @@ class RetardDetectionService
     
         return $dejaPointe;
     }
+    
 }
