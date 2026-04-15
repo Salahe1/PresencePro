@@ -58,7 +58,7 @@ security:
         # Il doit être placé AVANT le firewall "api"
         # sinon /api/pointage/scan sera capturé par "api"
         pointage_scan:
-            pattern: ^/api/pointage/scan$
+            pattern: ^/api/pointages/scan$
             stateless: true
             provider: jwt
             jwt: ~
@@ -96,7 +96,7 @@ security:
         # Le JWT doit contenir ROLE_TABLET
         # IMPORTANT :
         # Cette règle doit être placée AVANT la règle générale ^/api
-        - { path: ^/api/pointage/scan$, roles: ROLE_TABLET, methods: [POST] }
+        - { path: ^/api/pointages/scan$, roles: ROLE_TABLET, methods: [POST] }
 
         # Toutes les autres routes API nécessitent au minimum ROLE_MANAGER
         - { path: ^/api, roles: ROLE_MANAGER }

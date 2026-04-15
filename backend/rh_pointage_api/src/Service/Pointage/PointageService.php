@@ -6,6 +6,8 @@ namespace App\Service\Pointage;
 use Doctrine\ORM\EntityManagerInterface;
 use App\Service\Biometrique\BiometriqueMatchingService;
 use App\Service\Retard\RetardDetectionService;
+use App\Repository\PointageRepository;
+use App\Service\Alerte\AlerteNotifierService;
 use App\Entity\Pointage;
 
 
@@ -16,9 +18,10 @@ class PointageService
         private EntityManagerInterface $entityManager,
         private BiometriqueMatchingService $biometriqueMatchingService,
         private PointageTypeDecider $pointageTypeDecider,
-        private RetardDetectionService $retardDetectionService
-    ) {
-    }
+        private RetardDetectionService $retardDetectionService,
+        private PointageRepository $pointageRepository,
+        private AlerteNotifierService $alerteNotifierService
+    ) {}
 
     public function traiterScan(array $biometriquedata, \DateTimeImmutable $timeStamp) : Pointage
     {
@@ -39,24 +42,42 @@ class PointageService
             $pointage->setType($pointageType);
             $pointage->setTimeStamp($timeStamp);
 
-
             if ($pointage->isEntree()) {
                 // Logique de détection
                 $retard = $this->retardDetectionService->creeRetardSiExiste($pointage);
 
                if($retard !== null){
                     $this->entityManager->persist($retard);
+
+                    $alerte = $this->alerteNotifierService->declencherAlerte($retard);
+                    $this->entityManager->persist($alerte);
                 }
             }
 
-
             $this->entityManager->persist($pointage);
 
-
-
-        $this->entityManager->flush();                    
+         $this->entityManager->flush();                    
 
         return $pointage;
     }
 
+    public function getAllPointages(): array
+    {
+    return $this->pointageRepository->findAllOrderByTimeStampDesc();
+    }
+
+    public function getPointageById(int $id) : ?Pointage
+    {
+        return $this->pointageRepository->find($id);
+    }
+
+    public function getPointagesByEmployeId(int $employeId) : array
+    {
+        return $this->pointageRepository->findByEmployeId($employeId);
+    }
+
+    public function getPointagesByDate(\DateTimeInterface $date) : array
+    {
+        return $this->pointageRepository->findByDate($date);
+    }
 }

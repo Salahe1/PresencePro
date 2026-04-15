@@ -19,7 +19,7 @@ class Alerte
     private ?string $message = null;
 
     #[ORM\Column(enumType: StatutAlerte::class)]
-    private ?StatutAlerte $statut = null;
+    private ?StatutAlerte $statut = StatutAlerte::NON_LU;
 
     #[ORM\Column(enumType: TypeAlerte::class)]
     private ?TypeAlerte $type = null;
