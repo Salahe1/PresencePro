@@ -19,7 +19,7 @@ final class PointageTypeDeciderTest extends TestCase
     }
 
 /**
- * @covers \App\Service\Pointage\PointageTypeDecider::decideType
+ * @covers \App\Service\Pointage\PointageTypeDecider::deciderType
  */    public function testRetourneEntreeQuandAucunPointageDuJour(): void
     {
         $employe = $this->createEmploye();
@@ -31,7 +31,7 @@ final class PointageTypeDeciderTest extends TestCase
     }
 
     /**
-    * @covers \App\Service\Pointage\PointageTypeDecider::decideType
+    * @covers \App\Service\Pointage\PointageTypeDecider::deciderType
     */
     public function testRetourneSortieQuandDernierPointageDuJourEstEntree(): void
     {
@@ -53,7 +53,7 @@ final class PointageTypeDeciderTest extends TestCase
     }
 
     /**
- * @covers \App\Service\Pointage\PointageTypeDecider::decideType
+ * @covers \App\Service\Pointage\PointageTypeDecider::deciderType
  */
     public function testRetourneEntreeQuandDernierPointageDuJourEstSortie(): void
     {

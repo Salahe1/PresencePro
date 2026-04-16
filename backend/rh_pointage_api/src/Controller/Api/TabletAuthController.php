@@ -46,15 +46,14 @@ class TabletAuthController extends AbstractController
              return new JsonResponse(['error' => 'Identifiants terminal invalides'], 401);
          }
         $payload = [
-        'username' => $terminalPointage->getIdentifiantAsString(),
-        'roles' => ['ROLE_TABLET'],
-        'terminal_id' => $terminalPointage->getIdentifiantAsString(),
-        'type' => 'terminal',
-        'exp' => time() + 900,];
+            'username' => $terminalPointage->getIdentifiantAsString(),
+            'roles' => ['ROLE_TABLET'],
+            'terminal_id' => $terminalPointage->getIdentifiantAsString(),
+            'type' => 'terminal',
+            'exp' => time() + 900,];
 
         $jwt = $this->jwtEncoder->encode($payload);
 
         return new JsonResponse(['token' => $jwt, 'expires_in' => 900,]);
-
     }
 }

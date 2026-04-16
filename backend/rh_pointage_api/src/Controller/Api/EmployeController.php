@@ -135,7 +135,7 @@ class EmployeController extends AbstractController
     public function create(Request $request): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
-        if (!isset($data['nom'], $data['prenom'], $data['email'], $data['matricule'], $data['poste'], $data['dateEmbauche'])) {
+        if (!isset($data['nom'], $data['prenom'], $data['email'], $data['telephone'], $data['matricule'], $data['departement'], $data['poste'], $data['dateEmbauche'])) {
             return new JsonResponse(['error' => 'Champs requis manquants'], 400);
         }
 
@@ -143,7 +143,9 @@ class EmployeController extends AbstractController
         $employe->setNom($data['nom']);
         $employe->setPrenom($data['prenom']);
         $employe->setEmail($data['email']);
+        $employe->setTelephone($data['telephone']);
         $employe->setMatricule($data['matricule']);
+        $employe->setDepartement($data['departement']);
         $employe->setPoste($data['poste']);
         $employe->setDateEmbauche(new \DateTimeImmutable($data['dateEmbauche']));
         
@@ -152,9 +154,6 @@ class EmployeController extends AbstractController
             if ($departement) {
                 $employe->setDepartement($departement);
             }
-        }
-        if (isset($data['telephone'])) {
-            $employe->setTelephone($data['telephone']);
         }
 
         $this->entityManager->persist($employe);
