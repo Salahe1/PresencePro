@@ -11,7 +11,7 @@ use App\Service\Alerte\AlerteNotifierService;
 use App\Entity\Pointage;
 
 
-class PointageService
+class PointageScanService
 {
 
     public function __construct(
@@ -61,23 +61,4 @@ class PointageService
         return $pointage;
     }
 
-    public function getAllPointages(): array
-    {
-    return $this->pointageRepository->findAllOrderByTimeStampDesc();
-    }
-
-    public function getPointageById(int $id) : ?Pointage
-    {
-        return $this->pointageRepository->find($id);
-    }
-
-    public function getPointagesByEmployeId(int $employeId) : array
-    {
-        return $this->pointageRepository->findByEmployeId($employeId);
-    }
-
-    public function getPointagesByDate(\DateTimeInterface $date) : array
-    {
-        return $this->pointageRepository->findByDate($date);
-    }
 }

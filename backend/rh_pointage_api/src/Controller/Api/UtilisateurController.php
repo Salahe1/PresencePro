@@ -5,23 +5,27 @@ namespace App\Controller\Api;
 use App\Entity\Utilisateur;
 use App\Enum\RoleUtilisateur;
 use App\Repository\UtilisateurRepository;
+use App\Repository\DepartementRepository;
+use App\Service\Utilisateur\CreateUtilisateurService;
+use App\Service\Utilisateur\UpdateUtilisateurService;
 use Doctrine\ORM\EntityManagerInterface;
-use OpenApi\Attributes as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
+use OpenApi\Attributes as OA;
 
 #[OA\Tag(name: 'Utilisateurs (admin)')]
+#[IsGranted('ROLE_ADMIN')]
 #[Route('/api/utilisateurs')]
 class UtilisateurController extends AbstractController
 {
     public function __construct(
         private UtilisateurRepository $utilisateurRepository,
-        private EntityManagerInterface $entityManager,
-        private UserPasswordHasherInterface $passwordHasher
+        private CreateUtilisateurService $createUtilisateurService,
+        private UpdateUtilisateurService $updateUtilisateurService
     ) {}
 
     private function serializeUtilisateur(Utilisateur $utilisateur): array
@@ -37,7 +41,9 @@ class UtilisateurController extends AbstractController
             'dateEmbauche'  => $utilisateur->getDateEmbauche()?->format('Y-m-d'),
             'actif'         => $utilisateur->isActif(),
             'role'          => $utilisateur->getRole()?->value,
-            'departement_id'=> $utilisateur->getDepartement()?->getId(),
+            'departement' => $utilisateur->getDepartement() ? [
+                                'id' => $utilisateur->getDepartement()->getId(),
+                                'label' => $utilisateur->getDepartement()->getLabel(),] : null,
         ];
     }
 
@@ -107,6 +113,7 @@ class UtilisateurController extends AbstractController
                     new OA\Property(property: 'prenom',      type: 'string',  example: 'Super'),
                     new OA\Property(property: 'email',       type: 'string',  format: 'email', example: 'admin@grh.ma'),
                     new OA\Property(property: 'telephone',   type: 'string',  example: '+212600000000'),
+                    new OA\Property(property: 'departementId', type: 'integer', example: 1),
                     new OA\Property(property: 'poste',       type: 'string',  example: 'Responsable RH'),
                     new OA\Property(property: 'motDePasse',  type: 'string',  format: 'password', example: 'Str0ngP@ss!'),
                     new OA\Property(property: 'role',        type: 'string',  example: 'admin',
@@ -128,39 +135,17 @@ class UtilisateurController extends AbstractController
     {
         $data = json_decode($request->getContent(), true);
 
-        $requiredFields = ['matricule', 'nom', 'prenom', 'email', 'telephone', 'poste', 'motDePasse', 'role'];
-        foreach ($requiredFields as $field) {
-            if (empty($data[$field])) {
-                return new JsonResponse(['error' => "Field '$field' is required"], 400);
-            }
+        if (!is_array($data)) {
+            return new JsonResponse(['error' => 'Invalid JSON payload'], 400);
         }
 
-        $utilisateur = new Utilisateur();
-        $utilisateur->setMatricule($data['matricule']);
-        $utilisateur->setNom($data['nom']);
-        $utilisateur->setPrenom($data['prenom']);
-        $utilisateur->setEmail($data['email']);
-        $utilisateur->setTelephone($data['telephone']);
-        $utilisateur->setPoste($data['poste']);
-        $utilisateur->setDateEmbauche(!empty($data['dateEmbauche'])
-            ? new \DateTimeImmutable($data['dateEmbauche'])
-            : new \DateTimeImmutable());
-
-        if (isset($data['actif'])) {
-            $utilisateur->setActif((bool)$data['actif']);
+        try {
+            $utilisateur = $this->createUtilisateurService->create($data);
+        } catch (\InvalidArgumentException | \DomainException $e) {
+            return new JsonResponse(['error' => $e->getMessage()], 400);
+        } catch (\Exception $e) {
+            return new JsonResponse(['error' => 'Unexpected server error'], 500);
         }
-
-        $role = RoleUtilisateur::tryFrom($data['role']);
-        if (!$role) {
-            return new JsonResponse(['error' => 'Invalid role. Allowed values: admin, manager'], 400);
-        }
-        $utilisateur->setRole($role);
-
-        $hashedPassword = $this->passwordHasher->hashPassword($utilisateur, $data['motDePasse']);
-        $utilisateur->setMotDePasse($hashedPassword);
-
-        $this->entityManager->persist($utilisateur);
-        $this->entityManager->flush();
 
         return new JsonResponse($this->serializeUtilisateur($utilisateur), 201);
     }
@@ -200,35 +185,29 @@ class UtilisateurController extends AbstractController
     #[Route('/{id}', methods: ['PUT'])]
     public function update(int $id, Request $request): JsonResponse
     {
-        $utilisateur = $this->utilisateurRepository->find($id);
-        if (!$utilisateur) {
-            return new JsonResponse(['error' => 'Utilisateur not found'], 404);
-        }
-
         $data = json_decode($request->getContent(), true);
 
-        if (isset($data['matricule']))   $utilisateur->setMatricule($data['matricule']);
-        if (isset($data['nom']))         $utilisateur->setNom($data['nom']);
-        if (isset($data['prenom']))      $utilisateur->setPrenom($data['prenom']);
-        if (isset($data['email']))       $utilisateur->setEmail($data['email']);
-        if (isset($data['telephone']))   $utilisateur->setTelephone($data['telephone']);
-        if (isset($data['poste']))       $utilisateur->setPoste($data['poste']);
-        if (isset($data['actif']))       $utilisateur->setActif((bool)$data['actif']);
-
-        if (!empty($data['dateEmbauche'])) {
-            $utilisateur->setDateEmbauche(new \DateTimeImmutable($data['dateEmbauche']));
-        }
-        if (!empty($data['role'])) {
-            $role = RoleUtilisateur::tryFrom($data['role']);
-            if ($role) $utilisateur->setRole($role);
-        }
-        if (!empty($data['motDePasse'])) {
-            $utilisateur->setMotDePasse(
-                $this->passwordHasher->hashPassword($utilisateur, $data['motDePasse'])
-            );
+        if (!is_array($data)) {
+            return new JsonResponse(['error' => 'Invalid JSON payload'], 400);
         }
 
-        $this->entityManager->flush();
+        try {
+         $utilisateur = $this->updateUtilisateurService->update($id, $data);
+     } catch (\DomainException $e) {
+            $status = match ($e->getMessage()) {
+                'Utilisateur not found' => 404,
+                'Departement not found' => 400,
+                'Invalid role. Allowed values: admin, manager' => 400,
+                default => 400,
+            };
+
+            return new JsonResponse(['error' => $e->getMessage()], $status);
+        } catch (\InvalidArgumentException $e) {
+            return new JsonResponse(['error' => $e->getMessage()], 400);
+        } catch (\Exception) {
+            return new JsonResponse(['error' => 'Unexpected server error'], 500);
+        }
+
         return new JsonResponse($this->serializeUtilisateur($utilisateur));
     }
 

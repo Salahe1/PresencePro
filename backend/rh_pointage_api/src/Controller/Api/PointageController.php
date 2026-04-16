@@ -8,13 +8,15 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
 use App\Service\Pointage\PointageQueryService;
+use App\Service\Pointage\PointageScanService;
 use App\Entity\Pointage;
 
 
 #[Route('/api/pointages')]
 class PointageController extends AbstractController
 {
-    public function __construct(private PointageQueryService $pointageQueryService){}
+    public function __construct(private PointageQueryService $pointageQueryService
+                                ,private PointageScanService $pointageScanService ){}
 
     #[Route('/scan', methods: ['POST'])]
     public function scan(Request $request) : JsonResponse
@@ -39,7 +41,7 @@ class PointageController extends AbstractController
         }
 
         try {
-            $pointageResult = $this->pointageQueryService->traiterScan($dataBiometrique, $timeStamp);
+            $pointageResult = $this->pointageScanService->traiterScan($dataBiometrique, $timeStamp);
         } catch (\Exception $e) {
             return new JsonResponse(['error' => $e->getMessage()], 400);
         }    
