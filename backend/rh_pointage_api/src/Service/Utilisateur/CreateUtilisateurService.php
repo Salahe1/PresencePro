@@ -4,6 +4,7 @@ namespace App\Service\Utilisateur;
 
 use App\Entity\Utilisateur;
 use App\Enum\RoleUtilisateur;
+use App\Exception\ApiException;
 use App\Repository\DepartementRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
@@ -20,26 +21,64 @@ class CreateUtilisateurService
     public function create(array $data): Utilisateur
     {
         $requiredFields = [
-            'matricule', 'nom',
-            'prenom', 'email',
-            'telephone', 'departementId',
-            'poste',  'motDePasse', 'role',
+            'matricule',
+            'nom',
+            'prenom',
+            'email',
+            'telephone',
+            'departementId',
+            'poste',
+            'motDePasse',
+            'role',
         ];
 
+        $details = [];
         foreach ($requiredFields as $field) {
-            if (!isset($data[$field]) || $data[$field] === '' || $data[$field] === null) {
-                throw new \InvalidArgumentException("Field '$field' is required");
+            if (!array_key_exists($field, $data) || $data[$field] === null || $data[$field] === '') {
+                $details[$field] = ['Ce champ est obligatoire.'];
             }
+        }
+
+        if (!empty($details)) {
+            throw new ApiException(
+                'Les données envoyées sont invalides.',
+                422,
+                'VALIDATION_ERROR',
+                $details
+            );
         }
 
         $departement = $this->departementRepository->find($data['departementId']);
         if (!$departement) {
-            throw new \DomainException('Departement not found');
+            throw new ApiException(
+                'Département introuvable.',
+                404,
+                'DEPARTEMENT_NOT_FOUND',
+                ['departementId' => ['Aucun département trouvé pour cette valeur.']]
+            );
         }
 
-        $role = RoleUtilisateur::tryFrom($data['role']);
+        $role = RoleUtilisateur::tryFrom((string) $data['role']);
         if (!$role) {
-            throw new \DomainException('Invalid role. Allowed values: admin, manager');
+            throw new ApiException(
+                'Rôle invalide. Valeurs autorisées : admin, manager.',
+                422,
+                'INVALID_ROLE',
+                ['role' => ['Valeurs autorisées : admin, manager.']]
+            );
+        }
+
+        try {
+            $dateEmbauche = !empty($data['dateEmbauche'])
+                ? new \DateTimeImmutable($data['dateEmbauche'])
+                : new \DateTimeImmutable();
+        } catch (\Throwable) {
+            throw new ApiException(
+                'Format de date invalide.',
+                422,
+                'INVALID_DATE_FORMAT',
+                ['dateEmbauche' => ['Format attendu : Y-m-d ou date ISO valide.']]
+            );
         }
 
         $utilisateur = new Utilisateur();
@@ -51,14 +90,9 @@ class CreateUtilisateurService
         $utilisateur->setPoste($data['poste']);
         $utilisateur->setDepartement($departement);
         $utilisateur->setRole($role);
+        $utilisateur->setDateEmbauche($dateEmbauche);
 
-        $utilisateur->setDateEmbauche(
-            !empty($data['dateEmbauche'])
-                ? new \DateTimeImmutable($data['dateEmbauche'])
-                : new \DateTimeImmutable()
-        );
-
-        if (isset($data['actif'])) {
+        if (array_key_exists('actif', $data)) {
             $utilisateur->setActif((bool) $data['actif']);
         }
 

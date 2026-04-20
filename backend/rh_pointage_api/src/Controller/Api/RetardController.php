@@ -11,6 +11,8 @@ use Symfony\Component\Routing\Annotation\Route;
 #[Route('/api/retards')]
 class RetardController extends AbstractController
 {
+    use ApiControllerHelperTrait;
+
     public function __construct(
         private RetardQueryService $retardQueryService
     ) {}
@@ -30,17 +32,8 @@ class RetardController extends AbstractController
     #[Route('/date/{date}', methods: ['GET'])]
     public function retardsDuJour(string $date): JsonResponse
     {
-      $dateObj = \DateTimeImmutable::createFromFormat('Y-m-d', $date);
-      $errors = \DateTimeImmutable::getLastErrors();
-
-        if (
-            $dateObj === false ||
-            ($errors !== false && ($errors['warning_count'] > 0 || $errors['error_count'] > 0))
-        ) {
-            return new JsonResponse(['error' => 'Format de date invalide. Utilisez Y-m-d'], 400);
-        }
-
-         $retards = $this->retardQueryService->getRetardsByDate($dateObj);
+        $dateObj = $this->parseDate($date, 'date', 'Y-m-d');
+        $retards = $this->retardQueryService->getRetardsByDate($dateObj);
 
         $responseData = array_map(
             fn(Retard $retard) => $this->serializeRetard($retard),
@@ -51,7 +44,7 @@ class RetardController extends AbstractController
     }
 
     #[Route('/employe/{id}', methods: ['GET'])]
-    public function retardsEmploye (int $id) : JsonResponse
+    public function retardsEmploye(int $id): JsonResponse
     {
         $retards = $this->retardQueryService->getRetardsByEmploye($id);
 
@@ -61,21 +54,16 @@ class RetardController extends AbstractController
         );
 
         return new JsonResponse($responseData);
-
     }
 
     #[Route('/{id}', methods: ['GET'])]
     public function retard(int $id): JsonResponse
     {
         $retard = $this->retardQueryService->getRetardById($id);
-
-        if (!$retard) {
-         return new JsonResponse(['error' => 'Retard non trouvé'], 404);
-        }
+        $this->assertFound($retard, 'Retard non trouvé.', 'RETARD_NOT_FOUND');
 
         return new JsonResponse($this->serializeRetard($retard));
     }
-
 
     private function serializeRetard(Retard $retard): array
     {
