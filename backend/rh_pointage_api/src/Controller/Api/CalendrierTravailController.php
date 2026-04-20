@@ -3,6 +3,7 @@
 namespace App\Controller\Api;
 
 use App\Entity\CalendrierTravail;
+use App\Entity\Departement;
 use App\Enum\TypeJour;
 use App\Exception\ApiException;
 use App\Repository\CalendrierTravailRepository;
@@ -14,7 +15,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
 
-#[OA\Tag(name: 'Calendriers de travail')]
+
 #[Route('/api/calendriers-travail')]
 class CalendrierTravailController extends AbstractController
 {
@@ -45,10 +46,8 @@ class CalendrierTravailController extends AbstractController
     {
         if (!is_string($value) || trim($value) === '') {
             throw new ApiException(
-                'Les données envoyées sont invalides.',
-                422,
-                'VALIDATION_ERROR',
-                ['typeJour' => ['Ce champ est obligatoire.']]
+                'Les données envoyées sont invalides.', 422,
+                'VALIDATION_ERROR',['typeJour' => ['Ce champ est obligatoire.']]
             );
         }
 
@@ -73,13 +72,50 @@ class CalendrierTravailController extends AbstractController
         );
     }
 
+    private function resolveDepartementFromPayload(array $data): ?Departement
+    {
+        if (!array_key_exists('departementId', $data) || $data['departementId'] === null || $data['departementId'] === '') {
+            return null;
+        }
+
+        $departement = $this->departementRepository->find($data['departementId']);
+        $this->assertFound($departement, 'Département non trouvé.', 'DEPARTEMENT_NOT_FOUND');
+
+        return $departement;
+    }
+
+    private function assertNoDuplicateRule( \DateTimeImmutable $dateJour, ?Departement $departement, ?int $excludeId = null ): void 
+    {
+        $exists = $this->calendrierTravailRepository->existsForDateAndDepartment(
+            $dateJour,
+            $departement,
+            $excludeId
+        );
+
+        if ($exists) {
+            throw new ApiException(
+                'Une règle de calendrier existe déjà pour cette date et ce périmètre.',
+                409,
+                'CALENDRIER_RULE_ALREADY_EXISTS',
+                [
+                    'dateJour' => ['Une règle existe déjà pour cette date.'],
+                    'departementId' => [
+                        $departement === null
+                            ? 'Une règle globale existe déjà pour cette date.'
+                            : 'Une règle existe déjà pour ce département à cette date.'
+                    ],
+                ]
+            );
+        }
+    }
+
     #[Route('', methods: ['GET'])]
     public function index(): JsonResponse
     {
         $entries = $this->calendrierTravailRepository->findAll();
 
         return new JsonResponse(array_map(
-            fn(CalendrierTravail $c) => $this->normalize($c),
+            fn (CalendrierTravail $c) => $this->normalize($c),
             $entries
         ));
     }
@@ -97,19 +133,20 @@ class CalendrierTravailController extends AbstractController
     public function create(Request $request): JsonResponse
     {
         $data = $this->parseJson($request);
-        $this->requireFields($data, ['dateJour', 'typeJour']);
+        $this->requireFields($data, ['dateJour', 'typeJour', 'estTravaille']);
+
+        $dateJour = $this->parseDate($data['dateJour'], 'dateJour', 'Y-m-d');
+        $typeJour = $this->resolveTypeJour($data['typeJour']);
+        $departement = $this->resolveDepartementFromPayload($data);
+
+        $this->assertNoDuplicateRule($dateJour, $departement);
 
         $entry = new CalendrierTravail();
-        $entry->setDateJour($this->parseDate($data['dateJour'], 'dateJour', 'Y-m-d'));
-        $entry->setTypeJour($this->resolveTypeJour($data['typeJour']));
-        $entry->setEstTravaille((bool) ($data['estTravaille'] ?? true));
+        $entry->setDateJour($dateJour);
+        $entry->setTypeJour($typeJour);
+        $entry->setEstTravaille((bool) $data['estTravaille']);
         $entry->setDescription($data['description'] ?? null);
-
-        if (array_key_exists('departementId', $data) && $data['departementId'] !== null && $data['departementId'] !== '') {
-            $departement = $this->departementRepository->find($data['departementId']);
-            $this->assertFound($departement, 'Département non trouvé.', 'DEPARTEMENT_NOT_FOUND');
-            $entry->setDepartement($departement);
-        }
+        $entry->setDepartement($departement);
 
         $this->entityManager->persist($entry);
         $this->entityManager->flush();
@@ -125,27 +162,63 @@ class CalendrierTravailController extends AbstractController
 
         $data = $this->parseJson($request);
 
+        $finalDateJour = $entry->getDateJour();
+        $finalTypeJour = $entry->getTypeJour();
+        $finalEstTravaille = $entry->isEstTravaille();
+        $finalDescription = $entry->getDescription();
+        $finalDepartement = $entry->getDepartement();
+
         if (array_key_exists('dateJour', $data)) {
-            $entry->setDateJour($this->parseDate($data['dateJour'], 'dateJour', 'Y-m-d'));
+            $finalDateJour = $this->parseDate($data['dateJour'], 'dateJour', 'Y-m-d');
         }
+
         if (array_key_exists('typeJour', $data)) {
-            $entry->setTypeJour($this->resolveTypeJour($data['typeJour']));
+            $finalTypeJour = $this->resolveTypeJour($data['typeJour']);
         }
+
         if (array_key_exists('estTravaille', $data)) {
-            $entry->setEstTravaille((bool) $data['estTravaille']);
+            $finalEstTravaille = (bool) $data['estTravaille'];
         }
+
         if (array_key_exists('description', $data)) {
-            $entry->setDescription($data['description']);
+            $finalDescription = $data['description'];
         }
+
         if (array_key_exists('departementId', $data)) {
             if ($data['departementId'] === null || $data['departementId'] === '') {
-                $entry->setDepartement(null);
+                $finalDepartement = null;
             } else {
                 $departement = $this->departementRepository->find($data['departementId']);
                 $this->assertFound($departement, 'Département non trouvé.', 'DEPARTEMENT_NOT_FOUND');
-                $entry->setDepartement($departement);
+                $finalDepartement = $departement;
             }
         }
+
+        if ($finalDateJour === null) {
+            throw new ApiException(
+                'Les données envoyées sont invalides.',
+                422,
+                'VALIDATION_ERROR',
+                ['dateJour' => ['Ce champ est obligatoire.']]
+            );
+        }
+
+        if ($finalTypeJour === null) {
+            throw new ApiException(
+                'Les données envoyées sont invalides.',
+                422,
+                'VALIDATION_ERROR',
+                ['typeJour' => ['Ce champ est obligatoire.']]
+            );
+        }
+
+        $this->assertNoDuplicateRule($finalDateJour, $finalDepartement, $entry->getId());
+
+        $entry->setDateJour($finalDateJour);
+        $entry->setTypeJour($finalTypeJour);
+        $entry->setEstTravaille($finalEstTravaille);
+        $entry->setDescription($finalDescription);
+        $entry->setDepartement($finalDepartement);
 
         $this->entityManager->flush();
 
