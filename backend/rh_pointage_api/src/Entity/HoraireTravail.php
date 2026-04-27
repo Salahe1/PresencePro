@@ -26,25 +26,26 @@ class HoraireTravail
     #[ORM\OrderBy(['ordre' => 'ASC'])]
     private Collection $plagesHoraires;
 
-    #[ORM\ManyToOne(targetEntity: Departement::class, inversedBy: 'horairesTravail')]
-    #[ORM\JoinColumn(nullable: true)]
-    private ?Departement $departement = null;
+    #[ORM\OneToMany(mappedBy: 'horaireTravail', targetEntity: Departement::class)]
+    private Collection $departements;
 
     public function __construct()
     {
         $this->plagesHoraires = new ArrayCollection();
+        $this->departements = new ArrayCollection();
     }
 
-    public function getId(): ?int { return $this->id;  }
+    public function getId(): ?int {  return $this->id; }
 
-    public function getLabel(): ?string   {  return $this->label;  }
-    public function setLabel(?string $label): static  {  $this->label = $label;  return $this; }
+    public function getLabel(): ?string {  return $this->label; }
 
-    public function getToleranceRetard(): ?\DateTimeImmutable  {  return $this->toleranceRetard; }
-    public function setToleranceRetard(\DateTimeImmutable $toleranceRetard): static  {  $this->toleranceRetard = $toleranceRetard;  return $this; }
+    public function setLabel(?string $label): static {  $this->label = $label;  return $this; }
 
-    //@return Collection<int, PlageHoraire> */
-    public function getPlagesHoraires(): Collection {  return $this->plagesHoraires;}
+    public function getToleranceRetard(): ?\DateTimeImmutable { return $this->toleranceRetard; }
+
+    public function setToleranceRetard(\DateTimeImmutable $toleranceRetard): static {  $this->toleranceRetard = $toleranceRetard; return $this; }
+
+    public function getPlagesHoraires(): Collection {  return $this->plagesHoraires; }
 
     public function addPlageHoraire(PlageHoraire $plageHoraire): static
     {
@@ -67,10 +68,29 @@ class HoraireTravail
         return $this;
     }
 
-    public function getDepartement(): ?Departement { return $this->departement; }
-    public function setDepartement(?Departement $departement): static { $this->departement = $departement; return $this; }
-    
-    // Returns the first PlageHoraire's start time — used by DetectionRetardService
+    public function getDepartements(): Collection { return $this->departements; }
+
+    public function addDepartement(Departement $departement): static
+    {
+        if (!$this->departements->contains($departement)) {
+            $this->departements->add($departement);
+            $departement->setHoraireTravail($this);
+        }
+
+        return $this;
+    }
+
+    public function removeDepartement(Departement $departement): static
+    {
+        if ($this->departements->removeElement($departement)) {
+            if ($departement->getHoraireTravail() === $this) {
+                $departement->setHoraireTravail(null);
+            }
+        }
+
+        return $this;
+    }
+
     public function getHeureDebutPremierePlage(): ?\DateTimeInterface
     {
         $first = $this->plagesHoraires->first();

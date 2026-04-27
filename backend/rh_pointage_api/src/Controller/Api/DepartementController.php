@@ -5,6 +5,7 @@ namespace App\Controller\Api;
 use App\Entity\Departement;
 use App\Exception\ApiException;
 use App\Repository\DepartementRepository;
+use App\Repository\HoraireTravailRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use OpenApi\Attributes as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -20,17 +21,28 @@ class DepartementController extends AbstractController
 
     public function __construct(
         private DepartementRepository $departementRepository,
+        private HoraireTravailRepository $horaireTravailRepository,
         private EntityManagerInterface $entityManager
-    ) {}
+    ) {
+    }
+
+    private function normalize(Departement $departement): array
+    {
+        return [
+            'id' => $departement->getId(),
+            'label' => $departement->getLabel(),
+            'horaireTravail' => $departement->getHoraireTravail() ? [
+                'id' => $departement->getHoraireTravail()->getId(),
+                'label' => $departement->getHoraireTravail()->getLabel(),
+            ] : null,
+        ];
+    }
 
     #[Route('', methods: ['GET'])]
     public function index(): JsonResponse
     {
         $departements = $this->departementRepository->findAll();
-        $data = array_map(fn(Departement $d) => [
-            'id' => $d->getId(),
-            'label' => $d->getLabel(),
-        ], $departements);
+        $data = array_map(fn(Departement $d) => $this->normalize($d), $departements);
 
         return new JsonResponse($data);
     }
@@ -41,22 +53,26 @@ class DepartementController extends AbstractController
         $departement = $this->departementRepository->find($id);
         $this->assertFound($departement, 'Département non trouvé.', 'DEPARTEMENT_NOT_FOUND');
 
-        return new JsonResponse(['id' => $departement->getId(), 'label' => $departement->getLabel()]);
+        return new JsonResponse($this->normalize($departement));
     }
 
     #[Route('', methods: ['POST'])]
     public function create(Request $request): JsonResponse
     {
         $data = $this->parseJson($request);
-        $this->requireFields($data, ['label']);
+        $this->requireFields($data, ['label', 'horaireTravailId']);
+
+        $horaireTravail = $this->horaireTravailRepository->find($data['horaireTravailId']);
+        $this->assertFound($horaireTravail, 'Horaire de travail non trouvé.', 'HORAIRE_TRAVAIL_NOT_FOUND');
 
         $departement = new Departement();
         $departement->setLabel($data['label']);
+        $departement->setHoraireTravail($horaireTravail);
 
         $this->entityManager->persist($departement);
         $this->entityManager->flush();
 
-        return new JsonResponse(['id' => $departement->getId(), 'label' => $departement->getLabel()], 201);
+        return new JsonResponse($this->normalize($departement), 201);
     }
 
     #[Route('/{id}', methods: ['PUT'])]
@@ -80,9 +96,24 @@ class DepartementController extends AbstractController
             $departement->setLabel($data['label']);
         }
 
+        if (array_key_exists('horaireTravailId', $data)) {
+            if ($data['horaireTravailId'] === null || $data['horaireTravailId'] === '') {
+                throw new ApiException(
+                    'Les données envoyées sont invalides.',
+                    422,
+                    'VALIDATION_ERROR',
+                    ['horaireTravailId' => ['Ce champ ne peut pas être vide.']]
+                );
+            }
+
+            $horaireTravail = $this->horaireTravailRepository->find($data['horaireTravailId']);
+            $this->assertFound($horaireTravail, 'Horaire de travail non trouvé.', 'HORAIRE_TRAVAIL_NOT_FOUND');
+            $departement->setHoraireTravail($horaireTravail);
+        }
+
         $this->entityManager->flush();
 
-        return new JsonResponse(['id' => $departement->getId(), 'label' => $departement->getLabel()]);
+        return new JsonResponse($this->normalize($departement));
     }
 
     #[Route('/{id}', methods: ['DELETE'])]
