@@ -13,18 +13,9 @@ class ApiException extends \RuntimeException
         parent::__construct($message);
     }
 
-    public function getStatusCode(): int
-    {
-        return $this->statusCode;
-    }
+    public function getStatusCode(): int  { return $this->statusCode; }
 
-    public function getErrorCode(): string
-    {
-        return $this->errorCode;
-    }
+    public function getErrorCode(): string  { return $this->errorCode; }
 
-    public function getDetails(): array
-    {
-        return $this->details;
-    }
+    public function getDetails(): array { return $this->details; }
 }
