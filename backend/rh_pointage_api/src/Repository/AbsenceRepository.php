@@ -3,6 +3,8 @@
 namespace App\Repository;
 
 use App\Entity\Absence;
+use App\Entity\Employe;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -16,6 +18,21 @@ class AbsenceRepository extends ServiceEntityRepository
         parent::__construct($registry, Absence::class);
     }
 
+    public function existsForEmployeDateAndOrdrePlage( Employe $employe, \DateTimeImmutable $date, int $ordrePlage ): bool 
+    {
+     $count = (int) $this->createQueryBuilder('a')
+        ->select('COUNT(a.id)')
+        ->andWhere('a.employe = :employe')
+        ->andWhere('a.date = :date')
+        ->andWhere('a.ordrePlage = :ordrePlage')
+        ->setParameter('employe', $employe)
+        ->setParameter('date', $date, Types::DATE_IMMUTABLE)
+        ->setParameter('ordrePlage', $ordrePlage)
+        ->getQuery()
+        ->getSingleScalarResult();
+
+     return $count > 0;
+    }
 //    /**
 //     * @return Absence[] Returns an array of Absence objects
 //     */

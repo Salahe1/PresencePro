@@ -3,6 +3,7 @@
 namespace App\Service\Pointage;
 
 use App\Repository\PointageRepository;
+use App\Entity\Pointage;
 
 
 

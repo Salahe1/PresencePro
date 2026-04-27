@@ -2,6 +2,9 @@
 
 namespace App\Tests\Service\Retard;
 
+use App\Repository\PointageRepository;
+use App\Service\Retard\RetardDetectionService;
+use Doctrine\Common\Collections\ArrayCollection;
 use App\Entity\Departement;
 use App\Entity\Employe;
 use App\Entity\HoraireTravail;
@@ -9,17 +12,23 @@ use App\Entity\PlageHoraire;
 use App\Entity\Pointage;
 use App\Entity\Retard;
 use App\Enum\TypePointage;
-use App\Service\Retard\RetardDetectionService;
 use PHPUnit\Framework\TestCase;
 
 
 final class RetardDetectionServiceTest extends TestCase
 {
-    private RetardDetectionService $service;
+   private PointageRepository $pointageRepository;
+   private RetardDetectionService $service;
 
     protected function setUp(): void
     {
-        $this->service = new RetardDetectionService();
+        $this->pointageRepository = $this->createMock(PointageRepository::class);
+
+        $this->pointageRepository
+            ->method('findTodayPointagesByEmploye')
+            ->willReturn(new ArrayCollection());
+
+        $this->service = new RetardDetectionService($this->pointageRepository);
     }
 
     /**
@@ -140,8 +149,7 @@ final class RetardDetectionServiceTest extends TestCase
         $horaireTravail->addPlageHoraire($plageHoraire1);
         $horaireTravail->addPlageHoraire($plageHoraire2);
 
-        $horaireTravail->setDepartement($departement);
-        $departement->getHorairesTravail()->add($horaireTravail);
+        $departement->setHoraireTravail($horaireTravail);
 
         $employe = new Employe();
         $employe->setMatricule('EMP001');

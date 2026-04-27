@@ -27,37 +27,49 @@ class AlerteController extends AbstractController
     
     private function serializeAlerte(Alerte $alerte): array
     {
-        $retard = $alerte->getRetard();
-        $employe = $retard?->getEmploye();
-        $traitePar = $alerte->getTraitePar();
+     $retard = $alerte->getRetard();
+     $absence = $alerte->getAbsence();
 
-        return [
-            'id' => $alerte->getId(),
-            'type' => $alerte->getType()?->value,
-            'statut' => $alerte->getStatut()?->value,
-            'message' => $alerte->getMessage(),
+     $employe = $retard?->getEmploye() ?? $absence?->getEmploye();
+     $traitePar = $alerte->getTraitePar();
 
-            'retard' => $retard ? [
-                'id' => $retard->getId(),
-                'dateJour' => $retard->getDateJour()?->format('Y-m-d'),
-                'heurePrevue' => $retard->getHeurePrevue()?->format('H:i:s'),
-                'heureArrivee' => $retard->getHeureArrivee()?->format('H:i:s'),
-                'dureeRetardMinutes' => $retard->getDureeRetardMinutes(),
-                'justifie' => $retard->isJustifie(),
-                'commentaire' => $retard->getCommentaire(),
-            ] : null,
+     return [
+        'id' => $alerte->getId(),
+        'type' => $alerte->getType()?->value,
+        'statut' => $alerte->getStatut()?->value,
+        'message' => $alerte->getMessage(),
 
-            'employe' => $employe ? [
-                'id' => $employe->getId(),
-                'nomComplet' => $employe->getNomComplet(),
-                'matricule' => $employe->getMatricule(),
-            ] : null,
+        'retard' => $retard ? [
+            'id' => $retard->getId(),
+            'dateJour' => $retard->getDateJour()?->format('Y-m-d'),
+            'heurePrevue' => $retard->getHeurePrevue()?->format('H:i:s'),
+            'heureArrivee' => $retard->getHeureArrivee()?->format('H:i:s'),
+            'dureeRetardMinutes' => $retard->getDureeRetardMinutes(),
+            'justifie' => $retard->isJustifie(),
+            'commentaire' => $retard->getCommentaire(),
+        ] : null,
 
-            'traitePar' => $traitePar ? [
-                'id' => $traitePar->getId(),
-                'nomComplet' => $traitePar->getNomComplet(),
-                'matricule' => $traitePar->getMatricule(),
-            ] : null,
-            ];
+        'absence' => $absence ? [
+            'id' => $absence->getId(),
+            'date' => $absence->getDate()?->format('Y-m-d'),
+            'statut' => $absence->getStatut()?->value,
+            'typeAbsence' => $absence->getTypeAbsence()?->value,
+            'periode' => method_exists($absence, 'getLibellePeriode')
+                ? $absence->getLibellePeriode()
+                : null,
+        ] : null,
+
+        'employe' => $employe ? [
+            'id' => $employe->getId(),
+            'nomComplet' => $employe->getNomComplet(),
+            'matricule' => $employe->getMatricule(),
+        ] : null,
+
+        'traitePar' => $traitePar ? [
+            'id' => $traitePar->getId(),
+            'nomComplet' => $traitePar->getNomComplet(),
+            'matricule' => $traitePar->getMatricule(),
+        ] : null,
+     ];
     }
 }

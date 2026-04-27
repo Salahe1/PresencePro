@@ -7,6 +7,7 @@ use App\Enum\RoleUtilisateur;
 use App\Exception\ApiException;
 use App\Repository\DepartementRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use App\Service\Common\DateParserService;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 class CreateUtilisateurService
@@ -15,6 +16,7 @@ class CreateUtilisateurService
         private EntityManagerInterface $entityManager,
         private UserPasswordHasherInterface $passwordHasher,
         private DepartementRepository $departementRepository,
+        private DateParserService $dateParserService
     ) {
     }
 
@@ -22,14 +24,10 @@ class CreateUtilisateurService
     {
         $requiredFields = [
             'matricule',
-            'nom',
-            'prenom',
-            'email',
-            'telephone',
-            'departementId',
-            'poste',
-            'motDePasse',
-            'role',
+            'nom', 'prenom',
+            'email', 'telephone',
+            'departementId', 'poste',
+            'motDePasse', 'role',
         ];
 
         $details = [];
@@ -41,19 +39,14 @@ class CreateUtilisateurService
 
         if (!empty($details)) {
             throw new ApiException(
-                'Les données envoyées sont invalides.',
-                422,
-                'VALIDATION_ERROR',
-                $details
+                'Les données envoyées sont invalides.', 422, 'VALIDATION_ERROR', $details
             );
         }
 
         $departement = $this->departementRepository->find($data['departementId']);
         if (!$departement) {
             throw new ApiException(
-                'Département introuvable.',
-                404,
-                'DEPARTEMENT_NOT_FOUND',
+                'Département introuvable.', 404, 'DEPARTEMENT_NOT_FOUND',
                 ['departementId' => ['Aucun département trouvé pour cette valeur.']]
             );
         }
@@ -61,25 +54,12 @@ class CreateUtilisateurService
         $role = RoleUtilisateur::tryFrom((string) $data['role']);
         if (!$role) {
             throw new ApiException(
-                'Rôle invalide. Valeurs autorisées : admin, manager.',
-                422,
-                'INVALID_ROLE',
+                'Rôle invalide. Valeurs autorisées : admin, manager.', 422, 'INVALID_ROLE',
                 ['role' => ['Valeurs autorisées : admin, manager.']]
             );
         }
 
-        try {
-            $dateEmbauche = !empty($data['dateEmbauche'])
-                ? new \DateTimeImmutable($data['dateEmbauche'])
-                : new \DateTimeImmutable();
-        } catch (\Throwable) {
-            throw new ApiException(
-                'Format de date invalide.',
-                422,
-                'INVALID_DATE_FORMAT',
-                ['dateEmbauche' => ['Format attendu : Y-m-d ou date ISO valide.']]
-            );
-        }
+        $dateEmbauche = $this->dateParserService->parseYmdOrToday( $data['dateEmbauche'] ?? null, 'dateEmbauche' );
 
         $utilisateur = new Utilisateur();
         $utilisateur->setMatricule($data['matricule']);
