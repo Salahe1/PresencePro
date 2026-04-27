@@ -4,6 +4,7 @@ namespace App\Service\Utilisateur;
 
 use App\Entity\Utilisateur;
 use App\Enum\RoleUtilisateur;
+use App\Exception\ApiException;
 use App\Repository\DepartementRepository;
 use App\Repository\UtilisateurRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -24,48 +25,36 @@ class UpdateUtilisateurService
         $utilisateur = $this->utilisateurRepository->find($id);
 
         if (!$utilisateur) {
-            throw new \DomainException('Utilisateur not found');
+            throw new ApiException('Utilisateur non trouvé.', 404, 'UTILISATEUR_NOT_FOUND');
         }
 
-        if (isset($data['matricule'])) {
-            if ($data['matricule'] === null || $data['matricule'] === '') {
-                throw new \InvalidArgumentException("Field 'matricule' cannot be empty");
-            }
+        if (array_key_exists('matricule', $data)) {
+            $this->assertNotBlank($data['matricule'], 'matricule');
             $utilisateur->setMatricule($data['matricule']);
         }
 
-        if (isset($data['nom'])) {
-            if ($data['nom'] === null || $data['nom'] === '') {
-                throw new \InvalidArgumentException("Field 'nom' cannot be empty");
-            }
+        if (array_key_exists('nom', $data)) {
+            $this->assertNotBlank($data['nom'], 'nom');
             $utilisateur->setNom($data['nom']);
         }
 
-        if (isset($data['prenom'])) {
-            if ($data['prenom'] === null || $data['prenom'] === '') {
-                throw new \InvalidArgumentException("Field 'prenom' cannot be empty");
-            }
+        if (array_key_exists('prenom', $data)) {
+            $this->assertNotBlank($data['prenom'], 'prenom');
             $utilisateur->setPrenom($data['prenom']);
         }
 
-        if (isset($data['email'])) {
-            if ($data['email'] === null || $data['email'] === '') {
-                throw new \InvalidArgumentException("Field 'email' cannot be empty");
-            }
+        if (array_key_exists('email', $data)) {
+            $this->assertNotBlank($data['email'], 'email');
             $utilisateur->setEmail($data['email']);
         }
 
-        if (isset($data['telephone'])) {
-            if ($data['telephone'] === null || $data['telephone'] === '') {
-                throw new \InvalidArgumentException("Field 'telephone' cannot be empty");
-            }
+        if (array_key_exists('telephone', $data)) {
+            $this->assertNotBlank($data['telephone'], 'telephone');
             $utilisateur->setTelephone($data['telephone']);
         }
 
-        if (isset($data['poste'])) {
-            if ($data['poste'] === null || $data['poste'] === '') {
-                throw new \InvalidArgumentException("Field 'poste' cannot be empty");
-            }
+        if (array_key_exists('poste', $data)) {
+            $this->assertNotBlank($data['poste'], 'poste');
             $utilisateur->setPoste($data['poste']);
         }
 
@@ -73,35 +62,53 @@ class UpdateUtilisateurService
             $utilisateur->setActif((bool) $data['actif']);
         }
 
-        if (!empty($data['dateEmbauche'])) {
+        if (array_key_exists('dateEmbauche', $data) && $data['dateEmbauche'] !== null && $data['dateEmbauche'] !== '') {
             try {
                 $utilisateur->setDateEmbauche(new \DateTimeImmutable($data['dateEmbauche']));
-            } catch (\Exception) {
-                throw new \InvalidArgumentException('Invalid dateEmbauche format');
+            } catch (\Throwable) {
+                throw new ApiException(
+                    'Format de date invalide.',
+                    422,
+                    'INVALID_DATE_FORMAT',
+                    ['dateEmbauche' => ['Format attendu : Y-m-d ou date ISO valide.']]
+                );
             }
         }
 
         if (array_key_exists('departementId', $data)) {
             if ($data['departementId'] === null || $data['departementId'] === '') {
-                throw new \InvalidArgumentException("Field 'departementId' cannot be null");
+                throw new ApiException(
+                    'Le département est obligatoire.',
+                    422,
+                    'VALIDATION_ERROR',
+                    ['departementId' => ['Ce champ ne peut pas être vide.']]
+                );
             }
 
             $departement = $this->departementRepository->find($data['departementId']);
             if (!$departement) {
-                throw new \DomainException('Departement not found');
+                throw new ApiException(
+                    'Département introuvable.',
+                    404,
+                    'DEPARTEMENT_NOT_FOUND',
+                    ['departementId' => ['Aucun département trouvé pour cette valeur.']]
+                );
             }
 
             $utilisateur->setDepartement($departement);
         }
 
         if (array_key_exists('role', $data)) {
-            if ($data['role'] === null || $data['role'] === '') {
-                throw new \InvalidArgumentException("Field 'role' cannot be empty");
-            }
+            $this->assertNotBlank($data['role'], 'role');
 
-            $role = RoleUtilisateur::tryFrom($data['role']);
+            $role = RoleUtilisateur::tryFrom((string) $data['role']);
             if (!$role) {
-                throw new \DomainException('Invalid role. Allowed values: admin, manager');
+                throw new ApiException(
+                    'Rôle invalide. Valeurs autorisées : admin, manager.',
+                    422,
+                    'INVALID_ROLE',
+                    ['role' => ['Valeurs autorisées : admin, manager.']]
+                );
             }
 
             $utilisateur->setRole($role);
@@ -115,5 +122,17 @@ class UpdateUtilisateurService
         $this->entityManager->flush();
 
         return $utilisateur;
+    }
+
+    private function assertNotBlank(mixed $value, string $field): void
+    {
+        if ($value === null || $value === '') {
+            throw new ApiException(
+                'Les données envoyées sont invalides.',
+                422,
+                'VALIDATION_ERROR',
+                [$field => ['Ce champ ne peut pas être vide.']]
+            );
+        }
     }
 }

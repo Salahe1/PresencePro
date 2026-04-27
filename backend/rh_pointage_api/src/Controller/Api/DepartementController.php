@@ -3,7 +3,9 @@
 namespace App\Controller\Api;
 
 use App\Entity\Departement;
+use App\Exception\ApiException;
 use App\Repository\DepartementRepository;
+use App\Repository\HoraireTravailRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use OpenApi\Attributes as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -15,173 +17,114 @@ use Symfony\Component\Routing\Annotation\Route;
 #[Route('/api/departements')]
 class DepartementController extends AbstractController
 {
+    use ApiControllerHelperTrait;
+
     public function __construct(
         private DepartementRepository $departementRepository,
+        private HoraireTravailRepository $horaireTravailRepository,
         private EntityManagerInterface $entityManager
-    ) {}
+    ) {
+    }
 
-    // ─── GET /api/departements ─────────────────────────────────────────────
+    private function normalize(Departement $departement): array
+    {
+        return [
+            'id' => $departement->getId(),
+            'label' => $departement->getLabel(),
+            'horaireTravail' => $departement->getHoraireTravail() ? [
+                'id' => $departement->getHoraireTravail()->getId(),
+                'label' => $departement->getHoraireTravail()->getLabel(),
+            ] : null,
+        ];
+    }
 
-    #[OA\Get(
-        path: '/api/departements',
-        summary: 'Liste tous les départements',
-        security: [['Bearer' => []]],
-        responses: [
-            new OA\Response(
-                response: 200,
-                description: 'Liste des départements',
-                content: new OA\JsonContent(
-                    type: 'array',
-                    items: new OA\Items(ref: '#/components/schemas/Departement')
-                )
-            ),
-            new OA\Response(response: 401, description: 'Non authentifié'),
-        ]
-    )]
     #[Route('', methods: ['GET'])]
     public function index(): JsonResponse
     {
         $departements = $this->departementRepository->findAll();
-        $data = array_map(fn(Departement $d) => [
-            'id'    => $d->getId(),
-            'label' => $d->getLabel(),
-        ], $departements);
+        $data = array_map(fn(Departement $d) => $this->normalize($d), $departements);
 
         return new JsonResponse($data);
     }
 
-    // ─── GET /api/departements/{id} ────────────────────────────────────────
-
-    #[OA\Get(
-        path: '/api/departements/{id}',
-        summary: 'Détail d\'un département',
-        security: [['Bearer' => []]],
-        parameters: [
-            new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer')),
-        ],
-        responses: [
-            new OA\Response(response: 200, description: 'Département trouvé',    content: new OA\JsonContent(ref: '#/components/schemas/Departement')),
-            new OA\Response(response: 404, description: 'Département non trouvé'),
-            new OA\Response(response: 401, description: 'Non authentifié'),
-        ]
-    )]
     #[Route('/{id}', methods: ['GET'])]
     public function show(int $id): JsonResponse
     {
         $departement = $this->departementRepository->find($id);
-        if (!$departement) {
-            return new JsonResponse(['error' => 'Departement non trouvé'], 404);
-        }
+        $this->assertFound($departement, 'Département non trouvé.', 'DEPARTEMENT_NOT_FOUND');
 
-        return new JsonResponse(['id' => $departement->getId(), 'label' => $departement->getLabel()]);
+        return new JsonResponse($this->normalize($departement));
     }
 
-    // ─── POST /api/departements ────────────────────────────────────────────
-
-    #[OA\Post(
-        path: '/api/departements',
-        summary: 'Créer un département',
-        security: [['Bearer' => []]],
-        requestBody: new OA\RequestBody(
-            required: true,
-            content: new OA\JsonContent(
-                required: ['label'],
-                properties: [
-                    new OA\Property(property: 'label', type: 'string', example: 'Ressources Humaines'),
-                ]
-            )
-        ),
-        responses: [
-            new OA\Response(response: 201, description: 'Département créé',          content: new OA\JsonContent(ref: '#/components/schemas/Departement')),
-            new OA\Response(response: 400, description: 'Label requis',               content: new OA\JsonContent(properties: [new OA\Property(property: 'error', type: 'string')])),
-            new OA\Response(response: 401, description: 'Non authentifié'),
-        ]
-    )]
     #[Route('', methods: ['POST'])]
     public function create(Request $request): JsonResponse
     {
-        $data = json_decode($request->getContent(), true);
-        if (!isset($data['label'])) {
-            return new JsonResponse(['error' => 'Label is required'], 400);
-        }
+        $data = $this->parseJson($request);
+        $this->requireFields($data, ['label', 'horaireTravailId']);
+
+        $horaireTravail = $this->horaireTravailRepository->find($data['horaireTravailId']);
+        $this->assertFound($horaireTravail, 'Horaire de travail non trouvé.', 'HORAIRE_TRAVAIL_NOT_FOUND');
 
         $departement = new Departement();
         $departement->setLabel($data['label']);
+        $departement->setHoraireTravail($horaireTravail);
 
         $this->entityManager->persist($departement);
         $this->entityManager->flush();
 
-        return new JsonResponse(['id' => $departement->getId(), 'label' => $departement->getLabel()], 201);
+        return new JsonResponse($this->normalize($departement), 201);
     }
 
-    // ─── PUT /api/departements/{id} ────────────────────────────────────────
-
-    #[OA\Put(
-        path: '/api/departements/{id}',
-        summary: 'Modifier un département',
-        security: [['Bearer' => []]],
-        parameters: [
-            new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer')),
-        ],
-        requestBody: new OA\RequestBody(
-            required: true,
-            content: new OA\JsonContent(
-                required: ['label'],
-                properties: [
-                    new OA\Property(property: 'label', type: 'string', example: 'Direction Générale'),
-                ]
-            )
-        ),
-        responses: [
-            new OA\Response(response: 200, description: 'Département mis à jour', content: new OA\JsonContent(ref: '#/components/schemas/Departement')),
-            new OA\Response(response: 404, description: 'Département non trouvé'),
-            new OA\Response(response: 401, description: 'Non authentifié'),
-        ]
-    )]
     #[Route('/{id}', methods: ['PUT'])]
     public function update(int $id, Request $request): JsonResponse
     {
         $departement = $this->departementRepository->find($id);
-        if (!$departement) {
-            return new JsonResponse(['error' => 'Departement not found'], 404);
-        }
+        $this->assertFound($departement, 'Département non trouvé.', 'DEPARTEMENT_NOT_FOUND');
 
-        $data = json_decode($request->getContent(), true);
-        if (isset($data['label'])) {
+        $data = $this->parseJson($request);
+
+        if (array_key_exists('label', $data)) {
+            if ($data['label'] === null || $data['label'] === '') {
+                throw new ApiException(
+                    'Les données envoyées sont invalides.',
+                    422,
+                    'VALIDATION_ERROR',
+                    ['label' => ['Ce champ ne peut pas être vide.']]
+                );
+            }
+
             $departement->setLabel($data['label']);
         }
 
+        if (array_key_exists('horaireTravailId', $data)) {
+            if ($data['horaireTravailId'] === null || $data['horaireTravailId'] === '') {
+                throw new ApiException(
+                    'Les données envoyées sont invalides.',
+                    422,
+                    'VALIDATION_ERROR',
+                    ['horaireTravailId' => ['Ce champ ne peut pas être vide.']]
+                );
+            }
+
+            $horaireTravail = $this->horaireTravailRepository->find($data['horaireTravailId']);
+            $this->assertFound($horaireTravail, 'Horaire de travail non trouvé.', 'HORAIRE_TRAVAIL_NOT_FOUND');
+            $departement->setHoraireTravail($horaireTravail);
+        }
+
         $this->entityManager->flush();
-        return new JsonResponse(['id' => $departement->getId(), 'label' => $departement->getLabel()]);
+
+        return new JsonResponse($this->normalize($departement));
     }
 
-    // ─── DELETE /api/departements/{id} ────────────────────────────────────
-
-    #[OA\Delete(
-        path: '/api/departements/{id}',
-        summary: 'Supprimer un département',
-        description: 'Attention : vérifier qu\'aucun employé n\'est rattaché avant de supprimer.',
-        security: [['Bearer' => []]],
-        parameters: [
-            new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer')),
-        ],
-        responses: [
-            new OA\Response(response: 204, description: 'Supprimé avec succès'),
-            new OA\Response(response: 404, description: 'Département non trouvé'),
-            new OA\Response(response: 401, description: 'Non authentifié'),
-        ]
-    )]
     #[Route('/{id}', methods: ['DELETE'])]
     public function delete(int $id): JsonResponse
     {
         $departement = $this->departementRepository->find($id);
-        if (!$departement) {
-            return new JsonResponse(['error' => 'Departement not found'], 404);
-        }
+        $this->assertFound($departement, 'Département non trouvé.', 'DEPARTEMENT_NOT_FOUND');
 
         $this->entityManager->remove($departement);
         $this->entityManager->flush();
 
-        return new JsonResponse(null, 204); // ← corrigé : null au lieu d'un body sur 204
+        return new JsonResponse(null, 204);
     }
 }

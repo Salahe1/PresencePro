@@ -14,7 +14,7 @@ class CalendrierTravail
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: true)] 
+    #[ORM\Column(type: Types::DATE_IMMUTABLE)] 
     private ?\DateTimeImmutable $dateJour = null;
 
     #[ORM\Column(enumType: TypeJour::class)]

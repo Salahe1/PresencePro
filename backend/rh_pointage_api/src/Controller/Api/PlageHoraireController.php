@@ -3,8 +3,9 @@
 namespace App\Controller\Api;
 
 use App\Entity\PlageHoraire;
-use App\Repository\PlageHoraireRepository;
+use App\Exception\ApiException;
 use App\Repository\HoraireTravailRepository;
+use App\Repository\PlageHoraireRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use OpenApi\Attributes as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -16,6 +17,8 @@ use Symfony\Component\Routing\Annotation\Route;
 #[Route('/api/plages-horaires')]
 class PlageHoraireController extends AbstractController
 {
+    use ApiControllerHelperTrait;
+
     public function __construct(
         private PlageHoraireRepository $plageHoraireRepository,
         private HoraireTravailRepository $horaireTravailRepository,
@@ -25,110 +28,59 @@ class PlageHoraireController extends AbstractController
     private function normalize(PlageHoraire $plage): array
     {
         return [
-            'id'            => $plage->getId(),
-            'heureDebut'    => $plage->getHeureDebut()->format('H:i'),
-            'heureFin'      => $plage->getHeureFin()->format('H:i'),
-            'ordre'         => $plage->getOrdre(),
+            'id' => $plage->getId(),
+            'heureDebut' => $plage->getHeureDebut()->format('H:i'),
+            'heureFin' => $plage->getHeureFin()->format('H:i'),
+            'ordre' => $plage->getOrdre(),
             'horaireTravail' => [
-                'id'    => $plage->getHoraireTravail()->getId(),
+                'id' => $plage->getHoraireTravail()->getId(),
                 'label' => $plage->getHoraireTravail()->getLabel(),
             ],
         ];
     }
 
-    // ─── GET /api/plages-horaires ──────────────────────────────────────────
-
-    #[OA\Get(
-        path: '/api/plages-horaires',
-        summary: 'Liste toutes les plages horaires',
-        description: 'Chaque plage est liée à un horaire de travail. Utiliser GET /horaires-travail/{id} pour filtrer par horaire.',
-        security: [['Bearer' => []]],
-        responses: [
-            new OA\Response(
-                response: 200,
-                description: 'Liste des plages',
-                content: new OA\JsonContent(type: 'array', items: new OA\Items(ref: '#/components/schemas/PlageHoraire'))
-            ),
-            new OA\Response(response: 401, description: 'Non authentifié'),
-        ]
-    )]
     #[Route('', methods: ['GET'])]
     public function index(): JsonResponse
     {
         $plagesHoraires = $this->plageHoraireRepository->findAll();
-        return new JsonResponse(array_map(fn(PlageHoraire $p) => $this->normalize($p), $plagesHoraires));
+
+        return new JsonResponse(array_map(
+            fn(PlageHoraire $p) => $this->normalize($p),
+            $plagesHoraires
+        ));
     }
 
-    // ─── GET /api/plages-horaires/{id} ────────────────────────────────────
-
-    #[OA\Get(
-        path: '/api/plages-horaires/{id}',
-        summary: 'Détail d\'une plage horaire',
-        security: [['Bearer' => []]],
-        parameters: [
-            new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer')),
-        ],
-        responses: [
-            new OA\Response(response: 200, description: 'Plage trouvée',    content: new OA\JsonContent(ref: '#/components/schemas/PlageHoraire')),
-            new OA\Response(response: 404, description: 'Plage non trouvée'),
-            new OA\Response(response: 401, description: 'Non authentifié'),
-        ]
-    )]
     #[Route('/{id}', methods: ['GET'])]
     public function show(int $id): JsonResponse
     {
         $plageHoraire = $this->plageHoraireRepository->find($id);
-        if (!$plageHoraire) {
-            return new JsonResponse(['error' => 'Plage horaire non trouvée'], 404);
-        }
+        $this->assertFound($plageHoraire, 'Plage horaire non trouvée.', 'PLAGE_HORAIRE_NOT_FOUND');
+
         return new JsonResponse($this->normalize($plageHoraire));
     }
 
-    // ─── POST /api/plages-horaires ─────────────────────────────────────────
-
-    #[OA\Post(
-        path: '/api/plages-horaires',
-        summary: 'Créer une plage horaire',
-        description: 'L\'ordre détermine le tri des plages dans l\'affichage (1 = première plage de la journée).',
-        security: [['Bearer' => []]],
-        requestBody: new OA\RequestBody(
-            required: true,
-            content: new OA\JsonContent(
-                required: ['heureDebut', 'heureFin', 'ordre', 'horaireTravailId'],
-                properties: [
-                    new OA\Property(property: 'heureDebut',       type: 'string',  example: '08:00'),
-                    new OA\Property(property: 'heureFin',         type: 'string',  example: '12:00'),
-                    new OA\Property(property: 'ordre',            type: 'integer', example: 1,
-                        description: 'Position dans la journée (1 = matin, 2 = après-midi…)'),
-                    new OA\Property(property: 'horaireTravailId', type: 'integer', example: 1),
-                ]
-            )
-        ),
-        responses: [
-            new OA\Response(response: 201, description: 'Plage créée',         content: new OA\JsonContent(ref: '#/components/schemas/PlageHoraire')),
-            new OA\Response(response: 400, description: 'Champs requis manquants'),
-            new OA\Response(response: 404, description: 'Horaire de travail non trouvé'),
-            new OA\Response(response: 401, description: 'Non authentifié'),
-        ]
-    )]
     #[Route('', methods: ['POST'])]
     public function create(Request $request): JsonResponse
     {
-        $data = json_decode($request->getContent(), true);
+        $data = $this->parseJson($request);
+        $this->requireFields($data, ['heureDebut', 'heureFin', 'ordre', 'horaireTravailId']);
 
-        if (!isset($data['heureDebut'], $data['heureFin'], $data['ordre'], $data['horaireTravailId'])) {
-            return new JsonResponse(['error' => 'heureDebut, heureFin, ordre et horaireTravailId sont requises'], 400);
+        if (!is_int($data['ordre']) && !ctype_digit((string) $data['ordre'])) {
+            throw new ApiException(
+                'Les données envoyées sont invalides.',
+                422,
+                'VALIDATION_ERROR',
+                ['ordre' => ['Ce champ doit être un entier.']]
+            );
         }
 
         $horaireTravail = $this->horaireTravailRepository->find($data['horaireTravailId']);
-        if (!$horaireTravail) {
-            return new JsonResponse(['error' => 'Horaire travail non trouvé'], 404);
-        }
+        $this->assertFound($horaireTravail, 'Horaire de travail non trouvé.', 'HORAIRE_TRAVAIL_NOT_FOUND');
 
         $plageHoraire = new PlageHoraire();
-        $plageHoraire->setHeureDebut(new \DateTimeImmutable($data['heureDebut']));
-        $plageHoraire->setHeureFin(new \DateTimeImmutable($data['heureFin']));
-        $plageHoraire->setOrdre($data['ordre']);
+        $plageHoraire->setHeureDebut($this->parseTime($data['heureDebut'], 'heureDebut'));
+        $plageHoraire->setHeureFin($this->parseTime($data['heureFin'], 'heureFin'));
+        $plageHoraire->setOrdre((int) $data['ordre']);
         $plageHoraire->setHoraireTravail($horaireTravail);
 
         $this->entityManager->persist($plageHoraire);
@@ -137,83 +89,51 @@ class PlageHoraireController extends AbstractController
         return new JsonResponse($this->normalize($plageHoraire), 201);
     }
 
-    // ─── PUT /api/plages-horaires/{id} ────────────────────────────────────
-
-    #[OA\Put(
-        path: '/api/plages-horaires/{id}',
-        summary: 'Modifier une plage horaire',
-        security: [['Bearer' => []]],
-        parameters: [
-            new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer')),
-        ],
-        requestBody: new OA\RequestBody(
-            required: true,
-            content: new OA\JsonContent(
-                properties: [
-                    new OA\Property(property: 'heureDebut',       type: 'string'),
-                    new OA\Property(property: 'heureFin',         type: 'string'),
-                    new OA\Property(property: 'ordre',            type: 'integer'),
-                    new OA\Property(property: 'horaireTravailId', type: 'integer'),
-                ]
-            )
-        ),
-        responses: [
-            new OA\Response(response: 200, description: 'Plage mise à jour', content: new OA\JsonContent(ref: '#/components/schemas/PlageHoraire')),
-            new OA\Response(response: 404, description: 'Plage ou horaire non trouvé'),
-            new OA\Response(response: 401, description: 'Non authentifié'),
-        ]
-    )]
     #[Route('/{id}', methods: ['PUT'])]
     public function update(int $id, Request $request): JsonResponse
     {
         $plageHoraire = $this->plageHoraireRepository->find($id);
-        if (!$plageHoraire) {
-            return new JsonResponse(['error' => 'Plage horaire non trouvée'], 404);
+        $this->assertFound($plageHoraire, 'Plage horaire non trouvée.', 'PLAGE_HORAIRE_NOT_FOUND');
+
+        $data = $this->parseJson($request);
+
+        if (array_key_exists('heureDebut', $data)) {
+            $plageHoraire->setHeureDebut($this->parseTime($data['heureDebut'], 'heureDebut'));
         }
-
-        $data = json_decode($request->getContent(), true);
-
-        if (isset($data['heureDebut'])) $plageHoraire->setHeureDebut(new \DateTimeImmutable($data['heureDebut']));
-        if (isset($data['heureFin']))   $plageHoraire->setHeureFin(new \DateTimeImmutable($data['heureFin']));
-        if (isset($data['ordre']))      $plageHoraire->setOrdre($data['ordre']);
-
-        if (isset($data['horaireTravailId'])) {
-            $horaireTravail = $this->horaireTravailRepository->find($data['horaireTravailId']);
-            if (!$horaireTravail) {
-                return new JsonResponse(['error' => 'Horaire travail non trouvé'], 404);
+        if (array_key_exists('heureFin', $data)) {
+            $plageHoraire->setHeureFin($this->parseTime($data['heureFin'], 'heureFin'));
+        }
+        if (array_key_exists('ordre', $data)) {
+            if (!is_int($data['ordre']) && !ctype_digit((string) $data['ordre'])) {
+                throw new ApiException(
+                    'Les données envoyées sont invalides.',
+                    422,
+                    'VALIDATION_ERROR',
+                    ['ordre' => ['Ce champ doit être un entier.']]
+                );
             }
+            $plageHoraire->setOrdre((int) $data['ordre']);
+        }
+        if (array_key_exists('horaireTravailId', $data)) {
+            $horaireTravail = $this->horaireTravailRepository->find($data['horaireTravailId']);
+            $this->assertFound($horaireTravail, 'Horaire de travail non trouvé.', 'HORAIRE_TRAVAIL_NOT_FOUND');
             $plageHoraire->setHoraireTravail($horaireTravail);
         }
 
         $this->entityManager->flush();
+
         return new JsonResponse($this->normalize($plageHoraire));
     }
 
-    // ─── DELETE /api/plages-horaires/{id} ─────────────────────────────────
-
-    #[OA\Delete(
-        path: '/api/plages-horaires/{id}',
-        summary: 'Supprimer une plage horaire',
-        security: [['Bearer' => []]],
-        parameters: [
-            new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer')),
-        ],
-        responses: [
-            new OA\Response(response: 204, description: 'Supprimée avec succès'),
-            new OA\Response(response: 404, description: 'Plage non trouvée'),
-            new OA\Response(response: 401, description: 'Non authentifié'),
-        ]
-    )]
     #[Route('/{id}', methods: ['DELETE'])]
     public function delete(int $id): JsonResponse
     {
         $plageHoraire = $this->plageHoraireRepository->find($id);
-        if (!$plageHoraire) {
-            return new JsonResponse(['error' => 'Plage horaire non trouvée'], 404);
-        }
+        $this->assertFound($plageHoraire, 'Plage horaire non trouvée.', 'PLAGE_HORAIRE_NOT_FOUND');
 
         $this->entityManager->remove($plageHoraire);
         $this->entityManager->flush();
+
         return new JsonResponse(null, 204);
     }
 }

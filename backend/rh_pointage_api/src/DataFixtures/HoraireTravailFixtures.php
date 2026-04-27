@@ -2,14 +2,12 @@
 
 namespace App\DataFixtures;
 
-use App\Entity\Departement;
 use App\Entity\HoraireTravail;
 use App\Entity\PlageHoraire;
 use Doctrine\Bundle\FixturesBundle\Fixture;
-use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
 
-class HoraireTravailFixtures extends Fixture implements DependentFixtureInterface
+class HoraireTravailFixtures extends Fixture
 {
     public const HORAIRE_STANDARD = 'horaire-standard';
     public const HORAIRE_FLEXIBLE = 'horaire-flexible';
@@ -20,7 +18,6 @@ class HoraireTravailFixtures extends Fixture implements DependentFixtureInterfac
             [
                 'label' => 'Horaire Standard',
                 'tolerance' => '00:15:00',
-                'departement' => DepartementFixtures::DEP_IT,
                 'plages' => [
                     ['debut' => '08:00:00', 'fin' => '12:00:00', 'ordre' => 1],
                     ['debut' => '13:00:00', 'fin' => '17:00:00', 'ordre' => 2],
@@ -30,7 +27,6 @@ class HoraireTravailFixtures extends Fixture implements DependentFixtureInterfac
             [
                 'label' => 'Horaire Flexible',
                 'tolerance' => '00:30:00',
-                'departement' => DepartementFixtures::DEP_HR,
                 'plages' => [
                     ['debut' => '09:00:00', 'fin' => '13:00:00', 'ordre' => 1],
                     ['debut' => '14:00:00', 'fin' => '18:00:00', 'ordre' => 2],
@@ -43,7 +39,6 @@ class HoraireTravailFixtures extends Fixture implements DependentFixtureInterfac
             $horaire = new HoraireTravail();
             $horaire->setLabel($data['label']);
             $horaire->setToleranceRetard(\DateTimeImmutable::createFromFormat('H:i:s', $data['tolerance']));
-            $horaire->setDepartement($this->getReference($data['departement'], Departement::class));
 
             foreach ($data['plages'] as $plageData) {
                 $plage = new PlageHoraire();
@@ -60,12 +55,5 @@ class HoraireTravailFixtures extends Fixture implements DependentFixtureInterfac
         }
 
         $manager->flush();
-    }
-
-    public function getDependencies(): array
-    {
-        return [
-            DepartementFixtures::class,
-        ];
     }
 }

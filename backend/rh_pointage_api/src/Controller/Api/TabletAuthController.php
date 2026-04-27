@@ -2,58 +2,65 @@
 
 namespace App\Controller\Api;
 
-
+use App\Exception\ApiException;
 use App\Service\Terminal\AuthentificationTerminalService;
-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Lexik\Bundle\JWTAuthenticationBundle\Encoder\JWTEncoderInterface;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Uid\Ulid;
 
-
 #[Route('/api/tablet', name: 'api_tablet')]
-class TabletAuthController extends AbstractController 
+class TabletAuthController extends AbstractController
 {
-    public function __construct(private AuthentificationTerminalService $authService,
-                                    private JWTEncoderInterface $jwtEncoder      ) {}
+    use ApiControllerHelperTrait;
 
-    #[Route('/token', methods:['POST'])]
+    public function __construct(
+        private AuthentificationTerminalService $authService,
+        private JWTEncoderInterface $jwtEncoder
+    ) {}
+
+    #[Route('/token', methods: ['POST'])]
     public function getToken(Request $request): JsonResponse
     {
-        try {
-            $payload = $request->toArray();
-        } catch (\JsonException $e) {
-            return new JsonResponse(['error' => 'JSON invalide'], 400);
-        }
-
-        $identifiantRaw = $payload['identifiant'] ?? null;
-        $secret = $payload['secret'] ?? null;
-
-        if ($identifiantRaw === null || $secret === null) {
-            return new JsonResponse(['error' => 'Données manquantes'], 400);
-        }
+        $payload = $this->parseJson($request);
+        $this->requireFields($payload, ['identifiant', 'secret']);
 
         try {
-             $identifiant = new Ulid($identifiantRaw);
-        } catch (\Exception $e) {
-            return new JsonResponse(['error' => 'Identifiant invalide'], 400);
+            $identifiant = new Ulid((string) $payload['identifiant']);
+        } catch (\Throwable) {
+            throw new ApiException(
+                'Identifiant terminal invalide.',
+                422,
+                'INVALID_TERMINAL_IDENTIFIER',
+                ['identifiant' => ['Ce champ doit être un ULID valide.']]
+            );
         }
 
-        $terminalPointage = $this->authService->authentifier($identifiant, $secret);
+        $terminalPointage = $this->authService->authentifier($identifiant, (string) $payload['secret']);
 
         if ($terminalPointage === null) {
-             return new JsonResponse(['error' => 'Identifiants terminal invalides'], 401);
-         }
+            throw new ApiException(
+                'Identifiants terminal invalides.',
+                401,
+                'INVALID_TERMINAL_CREDENTIALS'
+            );
+        }
+
         $payload = [
             'username' => $terminalPointage->getIdentifiantAsString(),
             'roles' => ['ROLE_TABLET'],
             'terminal_id' => $terminalPointage->getIdentifiantAsString(),
             'type' => 'terminal',
-            'exp' => time() + 900,];
+            'exp' => time() + 900,
+        ];
 
         $jwt = $this->jwtEncoder->encode($payload);
 
-        return new JsonResponse(['token' => $jwt, 'expires_in' => 900,]);
+        return new JsonResponse([
+            'token' => $jwt,
+            'expires_in' => 900,
+        ]);
     }
 }
