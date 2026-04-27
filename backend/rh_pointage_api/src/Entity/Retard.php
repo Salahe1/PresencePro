@@ -62,7 +62,14 @@ class Retard
     public function setCommentaire(?string $commentaire): static { $this->commentaire = $commentaire; return $this; }
 
     public function getPointage(): ?Pointage { return $this->pointage; }
-    public function setPointage(Pointage $pointage): static { $this->pointage = $pointage; return $this; }
+    public function setPointage(Pointage $pointage): static
+    {
+        $this->pointage = $pointage;
+
+        if ($pointage->getRetard() !== $this) {  $pointage->setRetard($this); }
+
+        return $this;
+    }
  
     public function getEmploye(): Employe { return $this->employe; }
     public function setEmploye(Employe $employe): static { $this->employe = $employe; return $this; }

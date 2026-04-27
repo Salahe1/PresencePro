@@ -26,19 +26,11 @@ class PointageScanService
         $employe = $this->biometriqueMatchingService->identifierEmploye($biometriquedata);
 
         if (!$employe) {
-            throw new ApiException(
-                'Employé non identifié, pointage refusé.',
-                404,
-                'EMPLOYE_NON_IDENTIFIE'
-            );
+            throw new ApiException( 'Employé non identifié, pointage refusé.', 404, 'EMPLOYE_NON_IDENTIFIE' );
         }
 
         if (!$employe->isActif()) {
-            throw new ApiException(
-                'Employé inactif, pointage refusé.',
-                403,
-                'EMPLOYE_INACTIF'
-            );
+            throw new ApiException( 'Employé inactif, pointage refusé.',  403, 'EMPLOYE_INACTIF' );
         }
 
         $pointageType = $this->pointageTypeDecider->deciderType($employe, $timeStamp);

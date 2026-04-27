@@ -6,6 +6,9 @@ use App\Entity\Retard;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 use Doctrine\DBAL\Types\Types;
+use App\Entity\Employe;
+
+
 
 /**
  * @extends ServiceEntityRepository<Retard>
@@ -16,7 +19,7 @@ class RetardRepository extends ServiceEntityRepository
     {
         parent::__construct($registry, Retard::class);
     }
-
+    
     public function findAllByDateDesc(): array
     {
         return $this->createQueryBuilder('r')
