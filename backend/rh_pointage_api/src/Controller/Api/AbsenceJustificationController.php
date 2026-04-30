@@ -10,6 +10,8 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 
 #[Route('/api/absences')]
 class AbsenceJustificationController extends AbstractController
@@ -166,6 +168,51 @@ class AbsenceJustificationController extends AbstractController
         }
     }
     
+    #[Route('/{id}/justification/justificatif', requirements: ['id' => '\d+'], methods: ['GET'])]
+public function downloadJustificatif(int $id): Response
+{
+    try {
+        $path = $this->absenceJustificationService->getJustificatifPath($id);
+
+        $response = new BinaryFileResponse($path);
+
+        $response->setContentDisposition(
+            ResponseHeaderBag::DISPOSITION_INLINE,      // DISPOSITION_ATTACHMENT,
+            basename($path)
+        );
+
+        return $response;
+    } catch (\RuntimeException $exception) {
+        if ($exception->getMessage() === 'ABSENCE_NOT_FOUND') {
+            return new JsonResponse([
+                'error' => 'Absence non trouvée.'
+            ], Response::HTTP_NOT_FOUND);
+        }
+
+        if (
+            $exception->getMessage() === 'JUSTIFICATIF_NOT_FOUND'
+            || $exception->getMessage() === 'JUSTIFICATIF_FILE_NOT_FOUND'
+        ) {
+            return new JsonResponse([
+                'error' => 'Fichier justificatif non trouvé.'
+            ], Response::HTTP_NOT_FOUND);
+        }
+
+        return new JsonResponse([
+            'error' => 'Erreur métier.'
+        ], Response::HTTP_BAD_REQUEST);
+    } catch (\LogicException $exception) {
+        if ($exception->getMessage() === 'JUSTIFICATION_NOT_FOUND') {
+            return new JsonResponse([
+                'error' => 'Cette absence n’a pas encore de justification.'
+            ], Response::HTTP_NOT_FOUND);
+        }
+
+        return new JsonResponse([
+            'error' => 'Action impossible.'
+        ], Response::HTTP_CONFLICT);
+    }
+}
     
     private function serializeAbsence(Absence $absence): array
     {
