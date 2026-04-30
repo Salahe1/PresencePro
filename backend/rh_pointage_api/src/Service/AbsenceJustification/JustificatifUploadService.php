@@ -67,4 +67,20 @@ final class JustificatifUploadService
             unlink($path);
         }
     }
+
+    public function getAbsolutePath(?string $filename): string
+    {
+        if (!$filename) {
+            throw new \RuntimeException('JUSTIFICATIF_NOT_FOUND');
+        }
+
+        $safeFilename = basename($filename);
+        $path = $this->justificatifsDirectory . DIRECTORY_SEPARATOR . $safeFilename;
+
+        if (!is_file($path)) {
+            throw new \RuntimeException('JUSTIFICATIF_FILE_NOT_FOUND');
+        }
+
+        return $path;
+    }
 }

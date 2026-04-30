@@ -174,4 +174,23 @@ final class AbsenceJustificationService
 
         return $absence;
     }
+
+    public function getJustificatifPath(int $absenceId): string
+    {
+        $absence = $this->absenceRepository->find($absenceId);
+
+        if (!$absence) {
+            throw new \RuntimeException('ABSENCE_NOT_FOUND');
+        }
+
+        $justification = $absence->getJustification();
+
+        if (!$justification) {
+         throw new \LogicException('JUSTIFICATION_NOT_FOUND');
+     }
+
+        return $this->justificatifUploadService->getAbsolutePath(
+            $justification->getJustificatifPath()
+     );
+    }
 }
