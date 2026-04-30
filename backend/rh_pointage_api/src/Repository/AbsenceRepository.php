@@ -33,6 +33,50 @@ class AbsenceRepository extends ServiceEntityRepository
 
      return $count > 0;
     }
+
+    public function getAllAbsences(): array
+    {
+        return $this->createQueryBuilder('a')
+            ->leftJoin('a.employe', 'e')
+            ->addSelect('e')
+            ->leftJoin('a.justification', 'j')
+            ->addSelect('j')
+            ->orderBy('a.date', 'DESC')
+            ->addOrderBy('a.ordrePlage', 'DESC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    public function getAllAbsencesEmploye(int $employeId): array
+    {
+        return $this->createQueryBuilder('a')
+            ->leftJoin('a.employe', 'e')
+            ->addSelect('e')
+            ->leftJoin('a.justification', 'j')
+            ->addSelect('j')
+            ->andWhere('e.id = :employeId')
+            ->setParameter('employeId', $employeId)
+            ->orderBy('a.date', 'DESC')
+            ->addOrderBy('a.ordrePlage', 'DESC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    public function getAllAbsencesByDate(\DateTimeImmutable $date): array
+    {
+        return $this->createQueryBuilder('a')
+            ->leftJoin('a.employe', 'e')
+            ->addSelect('e')
+            ->leftJoin('a.justification', 'j')
+            ->addSelect('j')
+            ->andWhere('a.date = :date')
+            ->setParameter('date', $date, Types::DATE_IMMUTABLE)
+            ->orderBy('a.ordrePlage', 'DESC')
+            ->getQuery()
+            ->getResult();
+    }
+
+}
 //    /**
 //     * @return Absence[] Returns an array of Absence objects
 //     */
@@ -57,4 +101,4 @@ class AbsenceRepository extends ServiceEntityRepository
 //            ->getOneOrNullResult()
 //        ;
 //    }
-}
+
