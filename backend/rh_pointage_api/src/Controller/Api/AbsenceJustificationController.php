@@ -69,6 +69,34 @@ class AbsenceJustificationController extends AbstractController
         }
     }
 
+    #[Route('/{id}/justification/justificatif', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function uploadJustificatif(int $id, Request $request): JsonResponse
+    {
+        $file = $request->files->get('file');
+
+        if (!$file) {
+            return new JsonResponse([ 'error' => 'Aucun fichier envoyé. Le champ attendu est : file.' ], 400);
+        }
+
+        try {
+            $absence = $this->absenceJustificationService->uploaderJustificatif($id, $file);
+
+            return new JsonResponse( $this->serializeAbsence($absence), 200  );
+        } catch (\RuntimeException $exception) {
+            if ($exception->getMessage() === 'ABSENCE_NOT_FOUND') {
+                return new JsonResponse([ 'error' => 'Absence non trouvée.' ], 404); }
+
+            return new JsonResponse([ 'error' => 'Erreur métier.'  ], 400);
+        } catch (\LogicException $exception) {
+            if ($exception->getMessage() === 'JUSTIFICATION_NOT_FOUND') {
+                return new JsonResponse([ 'error' => 'Cette absence n’a pas encore de justification.' ], 404);
+            }
+
+            return new JsonResponse([ 'error' => 'Action impossible.' ], 409);
+        } catch (\InvalidArgumentException $exception) {
+            return new JsonResponse([ 'error' => $exception->getMessage() ], 422);
+        }
+    }
     #[Route('/{id}/justification', requirements: ['id' => '\d+'], methods: ['PATCH'])]
     public function updateJustification(int $id, Request $request): JsonResponse
     {

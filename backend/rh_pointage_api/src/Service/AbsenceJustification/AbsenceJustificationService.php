@@ -9,12 +9,15 @@ use App\Enum\StatutAbsence;
 use App\Enum\TypeAbsence;
 use App\Repository\AbsenceRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 final class AbsenceJustificationService
 {
     public function __construct(
         private AbsenceRepository $absenceRepository,
-        private EntityManagerInterface $entityManager
+        private EntityManagerInterface $entityManager,
+        private JustificatifUploadService $justificatifUploadService
+
     ) {}
 
     public function justifier(int $absenceId, array $data, Utilisateur $admin): Absence
@@ -121,11 +124,17 @@ final class AbsenceJustificationService
     {
         $absence = $this->absenceRepository->find($absenceId);
 
-        if (!$absence) { throw new \RuntimeException('ABSENCE_NOT_FOUND'); }
+        if (!$absence) {
+            throw new \RuntimeException('ABSENCE_NOT_FOUND');
+        }
 
         $justification = $absence->getJustification();
 
-        if (!$justification) {  throw new \LogicException('JUSTIFICATION_NOT_FOUND'); }
+        if (!$justification) {
+            throw new \LogicException('JUSTIFICATION_NOT_FOUND');
+        }
+
+        $fichier = $justification->getJustificatifPath();
 
         $absence->setJustification(null);
         $absence->setStatut(StatutAbsence::NONJUSTIFIE);
@@ -133,5 +142,36 @@ final class AbsenceJustificationService
 
         $this->entityManager->remove($justification);
         $this->entityManager->flush();
+
+        $this->justificatifUploadService->delete($fichier);
+    }
+
+    public function uploaderJustificatif(int $absenceId, UploadedFile $file): Absence
+    {
+        $absence = $this->absenceRepository->find($absenceId);
+
+        if (!$absence) {
+            throw new \RuntimeException('ABSENCE_NOT_FOUND');
+        }
+
+        $justification = $absence->getJustification();
+
+        if (!$justification) {
+            throw new \LogicException('JUSTIFICATION_NOT_FOUND');
+        }
+
+        $ancienFichier = $justification->getJustificatifPath();
+
+        $nouveauFichier = $this->justificatifUploadService->upload($file);
+
+        $justification->setJustificatifPath($nouveauFichier);
+
+        $this->entityManager->flush();
+
+        if ($ancienFichier) {
+            $this->justificatifUploadService->delete($ancienFichier);
+        }
+
+        return $absence;
     }
 }
