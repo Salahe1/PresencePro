@@ -8,6 +8,8 @@
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
     justificatifs_directory: '%kernel.project_dir%/var/uploads/justificatifs'
+    employes_photos_directory: '%kernel.project_dir%/var/uploads/employes/photos'
+
 
 services:
 
@@ -24,5 +26,10 @@ services:
     App\Service\AbsenceJustification\JustificatifUploadService:
         arguments:
             $justificatifsDirectory: '%justificatifs_directory%'
+    
+    App\Service\Employe\EmployePhotoUploadService:
+        arguments:
+            $employesPhotosDirectory: '%employes_photos_directory%'
+
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
