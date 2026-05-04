@@ -4,37 +4,32 @@ namespace App\Service\Terminal;
 
 use App\Entity\TerminalPointage;
 use App\Repository\TerminalPointageRepository;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Ulid;
-
 
 class AuthentificationTerminalService
 {
-     public function __construct(private TerminalPointageRepository $terminalRepository) {}
+    public function __construct(
+        private TerminalPointageRepository $terminalRepository,
+        private EntityManagerInterface $entityManager
+    ) {}
 
     public function authentifier(Ulid $identifiant, string $secret): ?TerminalPointage
     {
         $terminalPointage = $this->terminalRepository->findOneByIdentifiant($identifiant);
 
-        if(!$terminalPointage){ return null;  }
+        if (!$terminalPointage) {  return null; }
 
-        if(!$terminalPointage->isActif()){ return null;}
+        if (!$terminalPointage->isActif()) { return null; }
 
-        if (!password_verify($secret, $terminalPointage->getSecretHash())) {
-           return null;
-        }
+        if (!password_verify($secret, $terminalPointage->getSecretHash())) { return null; }
+
+        $now = new \DateTimeImmutable();
+        $terminalPointage->setDernierAccesAt($now);
+        $terminalPointage->setUpdatedAt($now);
+
+        $this->entityManager->flush();
 
         return $terminalPointage;
     }
 }
-        // Logique d'authentification du terminal
-        // Par exemple, vérifier l'identifiant et le secret dans la base de données
-        // et retourner le TerminalPointage correspondant si l'authentification est réussie.
-        
-        // Exemple de pseudo-code :
-        /*
-        $terminal = $this->terminalRepository->findOneByIdentifiant($identifiant);
-        if ($terminal && password_verify($secret, $terminal->getSecretHash())) {
-            return $terminal;
-        }
-        return null;
-        */

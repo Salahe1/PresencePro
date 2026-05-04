@@ -4,18 +4,21 @@ namespace App\Controller\Api;
 
 use App\Entity\Absence;
 use App\Entity\Utilisateur;
+use App\Exception\ApiException;
 use App\Service\AbsenceJustification\AbsenceJustificationService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Routing\Annotation\Route;
-use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
+use Symfony\Component\Routing\Annotation\Route;
 
 #[Route('/api/absences')]
 class AbsenceJustificationController extends AbstractController
 {
+    use ApiControllerHelperTrait;
+
     public function __construct(
         private AbsenceJustificationService $absenceJustificationService
     ) {}
@@ -23,52 +26,16 @@ class AbsenceJustificationController extends AbstractController
     #[Route('/{id}/justification', requirements: ['id' => '\d+'], methods: ['POST'])]
     public function createJustification(int $id, Request $request): JsonResponse
     {
-        $user = $this->getUser();
-
-        if (!$user instanceof Utilisateur) {
-            return new JsonResponse(['error' => 'Utilisateur connecté invalide.'], 401);
-        }
+        $user = $this->getAuthenticatedUtilisateur();
+        $data = $this->parseJson($request);
 
         try {
-            $data = json_decode( $request->getContent(), true, 512, JSON_THROW_ON_ERROR );
-
-            if (!is_array($data)) {
-                return new JsonResponse(['error' => 'Le corps de la requête doit être un objet JSON.' ], 400);
-            }
-
             $absence = $this->absenceJustificationService->justifier($id, $data, $user);
-
-            return new JsonResponse(  $this->serializeAbsence($absence), 201 );
-
-        } catch (\JsonException) {
-            return new JsonResponse([
-                'error' => 'JSON invalide.'
-            ], 400);
-        } catch (\RuntimeException $exception) {
-            if ($exception->getMessage() === 'ABSENCE_NOT_FOUND') {
-                return new JsonResponse([
-                    'error' => 'Absence non trouvée.'
-                ], 404);
-            }
-
-            return new JsonResponse([
-                'error' => 'Erreur métier.'
-            ], 400);
-        } catch (\LogicException $exception) {
-            if ($exception->getMessage() === 'ABSENCE_ALREADY_JUSTIFIED') {
-                return new JsonResponse([
-                    'error' => 'Cette absence est déjà justifiée.'
-                ], 409);
-            }
-
-            return new JsonResponse([
-                'error' => 'Action impossible.'
-            ], 409);
-        } catch (\InvalidArgumentException $exception) {
-            return new JsonResponse([
-                'error' => $exception->getMessage()
-            ], 422);
+        } catch (\Throwable $exception) {
+            throw $this->mapJustificationException($exception);
         }
+
+        return new JsonResponse($this->serializeAbsence($absence), Response::HTTP_CREATED);
     }
 
     #[Route('/{id}/justification/justificatif', requirements: ['id' => '\d+'], methods: ['POST'])]
@@ -77,71 +44,45 @@ class AbsenceJustificationController extends AbstractController
         $file = $request->files->get('file');
 
         if (!$file) {
-            return new JsonResponse([ 'error' => 'Aucun fichier envoyé. Le champ attendu est : file.' ], 400);
+            throw new ApiException(
+                'Aucun fichier envoyé.',
+                Response::HTTP_BAD_REQUEST,
+                'JUSTIFICATIF_FILE_REQUIRED',
+                ['file' => ['Le champ attendu est : file.']]
+            );
         }
 
         try {
             $absence = $this->absenceJustificationService->uploaderJustificatif($id, $file);
-
-            return new JsonResponse( $this->serializeAbsence($absence), 200  );
-        } catch (\RuntimeException $exception) {
-            if ($exception->getMessage() === 'ABSENCE_NOT_FOUND') {
-                return new JsonResponse([ 'error' => 'Absence non trouvée.' ], 404); }
-
-            return new JsonResponse([ 'error' => 'Erreur métier.'  ], 400);
-        } catch (\LogicException $exception) {
-            if ($exception->getMessage() === 'JUSTIFICATION_NOT_FOUND') {
-                return new JsonResponse([ 'error' => 'Cette absence n’a pas encore de justification.' ], 404);
-            }
-
-            return new JsonResponse([ 'error' => 'Action impossible.' ], 409);
-        } catch (\InvalidArgumentException $exception) {
-            return new JsonResponse([ 'error' => $exception->getMessage() ], 422);
+        } catch (\Throwable $exception) {
+            throw $this->mapJustificationException($exception);
         }
+
+        return new JsonResponse($this->serializeAbsence($absence));
     }
+
     #[Route('/{id}/justification', requirements: ['id' => '\d+'], methods: ['PATCH'])]
     public function updateJustification(int $id, Request $request): JsonResponse
     {
-        $user = $this->getUser();
+        $this->getAuthenticatedUtilisateur();
+        $data = $this->parseJson($request);
 
-        if (!$user instanceof Utilisateur) {
-            return new JsonResponse([ 'error' => 'Utilisateur connecté invalide.' ], 401);
+        if ($data === []) {
+            throw new ApiException(
+                'Aucune donnée fournie pour la modification.',
+                Response::HTTP_UNPROCESSABLE_ENTITY,
+                'VALIDATION_ERROR',
+                ['body' => ['Au moins un champ doit être fourni.']]
+            );
         }
 
         try {
-            $data = json_decode( $request->getContent(), true, 512, JSON_THROW_ON_ERROR );
-
-            if (!is_array($data)) {
-                return new JsonResponse([ 'error' => 'Le corps de la requête doit être un objet JSON.' ], 400);
-            }
-
-            if ($data === []) {
-                return new JsonResponse([ 'error' => 'Aucune donnée fournie pour la modification.' ], 422);
-            }
-
             $absence = $this->absenceJustificationService->modifierJustification($id, $data);
-
-            return new JsonResponse( $this->serializeAbsence($absence), 200  );
-
-        } catch (\JsonException) {
-            return new JsonResponse([ 'error' => 'JSON invalide.'  ], 400);
-        } catch (\RuntimeException $exception) {
-            if ($exception->getMessage() === 'ABSENCE_NOT_FOUND') {
-                return new JsonResponse([  'error' => 'Absence non trouvée.'  ], 404);
-            }
-
-            return new JsonResponse([ 'error' => 'Erreur métier.' ], 400);
-        } catch (\LogicException $exception) {
-            if ($exception->getMessage() === 'JUSTIFICATION_NOT_FOUND') {
-                return new JsonResponse([  'error' => 'Cette absence n’a pas encore de justification à modifier.' ], 404);
-            }
-
-            return new JsonResponse([ 'error' => 'Action impossible.' ], 409);
-        } catch (\InvalidArgumentException $exception) {
-            return new JsonResponse([
-                'error' => $exception->getMessage()
-            ], 422);
+        } catch (\Throwable $exception) {
+            throw $this->mapJustificationException($exception);
         }
+
+        return new JsonResponse($this->serializeAbsence($absence));
     }
 
     #[Route('/{id}/justification', requirements: ['id' => '\d+'], methods: ['DELETE'])]
@@ -149,71 +90,87 @@ class AbsenceJustificationController extends AbstractController
     {
         try {
             $this->absenceJustificationService->supprimerJustification($id);
-
-            return new Response(null, Response::HTTP_NO_CONTENT);
-        } catch (\RuntimeException $exception) {
-
-            if ($exception->getMessage() === 'ABSENCE_NOT_FOUND') {
-                return new JsonResponse([ 'error' => 'Absence non trouvée.' ], Response::HTTP_NOT_FOUND);
-            }
-
-            return new JsonResponse([ 'error' => 'Erreur métier.' ], Response::HTTP_BAD_REQUEST);
-        } catch (\LogicException $exception) {
-
-            if ($exception->getMessage() === 'JUSTIFICATION_NOT_FOUND') {
-                return new JsonResponse([ 'error' => 'Cette absence n’a pas de justification à supprimer.' ], Response::HTTP_NOT_FOUND);
-            }
-
-            return new JsonResponse([  'error' => 'Action impossible.' ], Response::HTTP_CONFLICT);
+        } catch (\Throwable $exception) {
+            throw $this->mapJustificationException($exception);
         }
+
+        return new Response(null, Response::HTTP_NO_CONTENT);
     }
-    
+
     #[Route('/{id}/justification/justificatif', requirements: ['id' => '\d+'], methods: ['GET'])]
-public function downloadJustificatif(int $id): Response
-{
-    try {
-        $path = $this->absenceJustificationService->getJustificatifPath($id);
+    public function downloadJustificatif(int $id): Response
+    {
+        try {
+            $path = $this->absenceJustificationService->getJustificatifPath($id);
+        } catch (\Throwable $exception) {
+            throw $this->mapJustificationException($exception);
+        }
 
         $response = new BinaryFileResponse($path);
-
         $response->setContentDisposition(
-            ResponseHeaderBag::DISPOSITION_INLINE,      // DISPOSITION_ATTACHMENT,
+            ResponseHeaderBag::DISPOSITION_INLINE,
             basename($path)
         );
 
         return $response;
-    } catch (\RuntimeException $exception) {
-        if ($exception->getMessage() === 'ABSENCE_NOT_FOUND') {
-            return new JsonResponse([
-                'error' => 'Absence non trouvée.'
-            ], Response::HTTP_NOT_FOUND);
-        }
-
-        if (
-            $exception->getMessage() === 'JUSTIFICATIF_NOT_FOUND'
-            || $exception->getMessage() === 'JUSTIFICATIF_FILE_NOT_FOUND'
-        ) {
-            return new JsonResponse([
-                'error' => 'Fichier justificatif non trouvé.'
-            ], Response::HTTP_NOT_FOUND);
-        }
-
-        return new JsonResponse([
-            'error' => 'Erreur métier.'
-        ], Response::HTTP_BAD_REQUEST);
-    } catch (\LogicException $exception) {
-        if ($exception->getMessage() === 'JUSTIFICATION_NOT_FOUND') {
-            return new JsonResponse([
-                'error' => 'Cette absence n’a pas encore de justification.'
-            ], Response::HTTP_NOT_FOUND);
-        }
-
-        return new JsonResponse([
-            'error' => 'Action impossible.'
-        ], Response::HTTP_CONFLICT);
     }
-}
-    
+
+    private function getAuthenticatedUtilisateur(): Utilisateur
+    {
+        $user = $this->getUser();
+
+        if (!$user instanceof Utilisateur) {
+            throw new ApiException(
+                'Utilisateur connecté invalide.',
+                Response::HTTP_UNAUTHORIZED,
+                'INVALID_AUTHENTICATED_USER'
+            );
+        }
+
+        return $user;
+    }
+
+    private function mapJustificationException(\Throwable $exception): ApiException
+    {
+        if ($exception instanceof ApiException) {
+            return $exception;
+        }
+
+        return match ($exception->getMessage()) {
+            'ABSENCE_NOT_FOUND' => new ApiException(
+                'Absence non trouvée.',
+                Response::HTTP_NOT_FOUND,
+                'ABSENCE_NOT_FOUND'
+            ),
+            'ABSENCE_ALREADY_JUSTIFIED' => new ApiException(
+                'Cette absence est déjà justifiée.',
+                Response::HTTP_CONFLICT,
+                'ABSENCE_ALREADY_JUSTIFIED'
+            ),
+            'JUSTIFICATION_NOT_FOUND' => new ApiException(
+                'Cette absence n’a pas encore de justification.',
+                Response::HTTP_NOT_FOUND,
+                'JUSTIFICATION_NOT_FOUND'
+            ),
+            'JUSTIFICATIF_NOT_FOUND', 'JUSTIFICATIF_FILE_NOT_FOUND' => new ApiException(
+                'Fichier justificatif non trouvé.',
+                Response::HTTP_NOT_FOUND,
+                $exception->getMessage()
+            ),
+            default => $exception instanceof \InvalidArgumentException
+                ? new ApiException(
+                    $exception->getMessage(),
+                    Response::HTTP_UNPROCESSABLE_ENTITY,
+                    'VALIDATION_ERROR'
+                )
+                : new ApiException(
+                    'Erreur métier.',
+                    Response::HTTP_BAD_REQUEST,
+                    'BUSINESS_ERROR'
+                ),
+        };
+    }
+
     private function serializeAbsence(Absence $absence): array
     {
         $employe = $absence->getEmploye();
@@ -224,19 +181,14 @@ public function downloadJustificatif(int $id): Response
             'date' => $absence->getDate()?->format('Y-m-d'),
             'statut' => $absence->getStatut()->value,
             'typeAbsence' => $absence->getTypeAbsence()?->value,
-
-            'ordrePlage' =>  $absence->getOrdrePlage() ,
-
-            'heureDebutPrevue' => $absence->getHeureDebutPrevue()->format('H:i'),
-
-            'heureFinPrevue' => $absence->getHeureFinPrevue(),
-
+            'ordrePlage' => $absence->getOrdrePlage(),
+            'heureDebutPrevue' => $absence->getHeureDebutPrevue()?->format('H:i'),
+            'heureFinPrevue' => $absence->getHeureFinPrevue()?->format('H:i'),
             'employe' => $employe ? [
                 'id' => $employe->getId(),
                 'matricule' => $employe->getMatricule(),
                 'nomComplet' => $employe->getNomComplet(),
             ] : null,
-
             'justification' => $justification ? [
                 'id' => $justification->getId(),
                 'motif' => $justification->getMotif(),

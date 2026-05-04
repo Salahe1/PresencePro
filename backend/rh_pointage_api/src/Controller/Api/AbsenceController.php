@@ -3,13 +3,12 @@
 namespace App\Controller\Api;
 
 use App\Entity\Absence;
+use App\Exception\ApiException;
 use App\Repository\AbsenceRepository;
 use App\Service\Absence\AbsenceQueryService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Annotation\Route;
-
-
 
 #[Route('/api/absences')]
 class AbsenceController extends AbstractController
@@ -38,7 +37,7 @@ class AbsenceController extends AbstractController
         $absence = $this->absenceRepository->find($id);
 
         if (!$absence) {
-            return new JsonResponse(['error' => 'Absence non trouvée'], 404);
+            throw new ApiException('Absence non trouvée.', 404, 'ABSENCE_NOT_FOUND');
         }
 
         return new JsonResponse($this->serializeAbsence($absence));
@@ -80,15 +79,9 @@ class AbsenceController extends AbstractController
             'date' => $absence->getDate()?->format('Y-m-d'),
             'statut' => $absence->getStatut()->value,
             'typeAbsence' => $absence->getTypeAbsence()?->value,
-            'ordrePlage' => method_exists($absence, 'getOrdrePlage')
-                ? $absence->getOrdrePlage()
-                : null,
-            'heureDebutPrevue' => method_exists($absence, 'getHeureDebutPrevue') && $absence->getHeureDebutPrevue()
-                ? $absence->getHeureDebutPrevue()->format('H:i')
-                : null,
-            'heureFinPrevue' => method_exists($absence, 'getHeureFinPrevue') && $absence->getHeureFinPrevue()
-                ? $absence->getHeureFinPrevue()->format('H:i')
-                : null,
+            'ordrePlage' => $absence->getOrdrePlage(),
+            'heureDebutPrevue' => $absence->getHeureDebutPrevue()?->format('H:i'),
+            'heureFinPrevue' => $absence->getHeureFinPrevue()?->format('H:i'),
             'employe' => $employe ? [
                 'id' => $employe->getId(),
                 'matricule' => $employe->getMatricule(),

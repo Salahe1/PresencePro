@@ -11,15 +11,108 @@ nelmio_api_doc:
           scheme: bearer
           bearerFormat: JWT
       schemas:
+        ApiErrorDetail:
+          type: object
+          additionalProperties:
+            type: array
+            items: { type: string }
+          example:
+            email: ['Cette valeur existe deja.']
         ApiError:
           type: object
+          required: [success, error]
           properties:
-            code: { type: integer, example: 401 }
-            message: { type: string, example: 'Identifiants invalides.' }
+            success: { type: boolean, example: false }
+            error:
+              type: object
+              required: [code, message, status]
+              properties:
+                code: { type: string, example: VALIDATION_ERROR }
+                message: { type: string, example: 'Les donnees envoyees sont invalides.' }
+                status: { type: integer, example: 422 }
+                details:
+                  oneOf:
+                    - { $ref: '#/components/schemas/ApiErrorDetail' }
+                    - { type: 'null' }
         TokenJWT:
           type: object
+          required: [token]
           properties:
             token: { type: string, example: 'eyJhbGciOiJIUzI1Ni...' }
+        TabletTokenRequest:
+          type: object
+          required: [identifiant, secret]
+          properties:
+            identifiant: { type: string, example: '01KP61YC0TJ09JG548ENTBAKV0' }
+            secret: { type: string, format: password, example: 'MonSecretTablet123!' }
+        TabletTokenResponse:
+          type: object
+          required: [token, expires_in]
+          properties:
+            token: { type: string, example: 'eyJhbGciOiJIUzI1Ni...' }
+            expires_in: { type: integer, example: 900 }
+        PointageScanRequest:
+          type: object
+          required: [dataBiometrique, timeStamp]
+          properties:
+            dataBiometrique:
+              type: array
+              items: {}
+              example: [0.12, 0.48, 0.91]
+            timeStamp:
+              type: string
+              format: date-time
+              example: '2026-05-04T08:03:00+01:00'
+        Pointage:
+          type: object
+          properties:
+            id: { type: integer, example: 1 }
+            employe: { type: string, example: 'Jean Dupont' }
+            type:
+              type: string
+              nullable: true
+              enum: [entre, sortie, null]
+              example: entre
+            timeStamp: { type: string, example: '2026-05-04 08:03:00' }
+        BiometrieEnrollmentRequest:
+          type: object
+          required: [descriptors]
+          properties:
+            descriptors:
+              type: array
+              description: 'Descriptors generes cote administration avec face-api.js.'
+              items:
+                type: array
+                minItems: 128
+                maxItems: 128
+                items: { type: number, format: float }
+              example:
+                - [0.12345678, -0.04567891, 0.08123456]
+        BiometriqueData:
+          type: object
+          properties:
+            version: { type: integer, example: 1 }
+            modality: { type: string, example: face }
+            algorithm: { type: string, example: face-api.js }
+            descriptorSize: { type: integer, example: 128 }
+            samplesCount: { type: integer, example: 3 }
+            averageDescriptor:
+              type: array
+              items: { type: number, format: float }
+              example: [0.12156912, -0.04582433, 0.90196145]
+            descriptors:
+              type: array
+              items:
+                type: array
+                minItems: 128
+                maxItems: 128
+                items: { type: number, format: float }
+            generatedAt: { type: string, format: date-time, example: '2026-05-04T08:03:00+01:00' }
+        BiometrieEnrollmentResponse:
+          type: object
+          properties:
+            employe: { $ref: '#/components/schemas/Employe' }
+            biometriqueData: { $ref: '#/components/schemas/BiometriqueData' }
         CalendrierTravail:
           type: object
           properties:
@@ -33,6 +126,15 @@ nelmio_api_doc:
             description: { type: string, nullable: true, example: 'Jour férié' }
             departement: { $ref: '#/components/schemas/Departement' }
         Departement:
+          type: object
+          properties:
+            id: { type: integer, example: 1 }
+            label: { type: string, example: 'Ressources Humaines' }
+            horaireTravail:
+              oneOf:
+                - { $ref: '#/components/schemas/HoraireTravailSummary' }
+                - { type: 'null' }
+        DepartementSummary:
           type: object
           properties:
             id: { type: integer, example: 1 }
@@ -56,7 +158,10 @@ nelmio_api_doc:
             dateEmbauche: { type: string, format: date, example: '2024-01-01' }
             actif: { type: boolean, example: true }
             role: { type: string, example: admin, description: 'admin | manager' }
-            departement_id: { type: integer, nullable: true, example: 1 }
+            departement:
+              oneOf:
+                - { $ref: '#/components/schemas/DepartementSummary' }
+                - { type: 'null' }
         Employe:
           type: object
           properties:
@@ -70,7 +175,21 @@ nelmio_api_doc:
             dateEmbauche: { type: string, format: date, example: '2024-01-15' }
             actif: { type: boolean, example: true }
             photo: { type: string, nullable: true, example: 'photo.jpg' }
-            departement: { $ref: '#/components/schemas/Departement' }
+            biometriqueData:
+              type: array
+              nullable: true
+              items: {}
+              example: [0.12, 0.48, 0.91]
+            departement:
+              oneOf:
+                - { $ref: '#/components/schemas/DepartementSummary' }
+                - { type: 'null' }
+        EmployeSummary:
+          type: object
+          properties:
+            id: { type: integer, example: 1 }
+            matricule: { type: string, example: 'EMP-001' }
+            nomComplet: { type: string, example: 'Jean Dupont' }
         HoraireTravail:
           type: object
           properties:
@@ -80,6 +199,11 @@ nelmio_api_doc:
             plagesHoraires:
               type: array
               items: { $ref: '#/components/schemas/PlageHoraire' }
+        HoraireTravailSummary:
+          type: object
+          properties:
+            id: { type: integer, example: 1 }
+            label: { type: string, example: 'Horaire standard 8h-17h' }
         PlageHoraire:
           type: object
           properties:
@@ -87,6 +211,100 @@ nelmio_api_doc:
             heureDebut: { type: string, example: '08:00' }
             heureFin: { type: string, example: '12:00' }
             ordre: { type: integer, example: 1 }
+            horaireTravail:
+              oneOf:
+                - { $ref: '#/components/schemas/HoraireTravailSummary' }
+                - { type: 'null' }
+        JustificationAbsence:
+          type: object
+          nullable: true
+          properties:
+            id: { type: integer, example: 1 }
+            motif: { type: string, example: 'Certificat medical' }
+            commentaire: { type: string, nullable: true, example: 'Absence justifiee par document.' }
+            justificatifPath: { type: string, nullable: true, example: 'justificatif_a1b2c3.pdf' }
+            dateJustification: { type: string, format: date, nullable: true, example: '2026-05-04' }
+            saisieParAdmin:
+              oneOf:
+                - { $ref: '#/components/schemas/EmployeSummary' }
+                - { type: 'null' }
+        Absence:
+          type: object
+          properties:
+            id: { type: integer, example: 1 }
+            date: { type: string, format: date, nullable: true, example: '2026-05-04' }
+            statut:
+              type: string
+              enum: [nonjustifie, justifie]
+              example: nonjustifie
+            typeAbsence:
+              type: string
+              nullable: true
+              example: maladie
+            ordrePlage: { type: integer, nullable: true, example: 1 }
+            heureDebutPrevue: { type: string, nullable: true, example: '08:00' }
+            heureFinPrevue: { type: string, nullable: true, example: '12:00' }
+            employe:
+              oneOf:
+                - { $ref: '#/components/schemas/EmployeSummary' }
+                - { type: 'null' }
+            justification:
+              oneOf:
+                - { $ref: '#/components/schemas/JustificationAbsence' }
+                - { type: 'null' }
+        JustificationAbsenceRequest:
+          type: object
+          required: [motif, typeAbsence]
+          properties:
+            motif: { type: string, example: 'Certificat medical' }
+            typeAbsence: { type: string, example: maladie }
+            commentaire: { type: string, nullable: true, example: 'Document transmis par le salarie.' }
+            justificatifPath: { type: string, nullable: true, example: 'justificatif_a1b2c3.pdf' }
+        Retard:
+          type: object
+          properties:
+            id: { type: integer, example: 1 }
+            dateJour: { type: string, format: date, nullable: true, example: '2026-05-04' }
+            heurePrevue: { type: string, nullable: true, example: '08:00:00' }
+            heureArrivee: { type: string, nullable: true, example: '08:17:00' }
+            justifie: { type: boolean, example: false }
+            employeNom: { type: string, example: 'Jean Dupont' }
+            employeMatricule: { type: string, example: 'EMP-001' }
+            dureeRetardMinutes: { type: integer, example: 17 }
+            commentaire: { type: string, nullable: true, example: null }
+        Alerte:
+          type: object
+          properties:
+            id: { type: integer, example: 1 }
+            type: { type: string, nullable: true, example: retard }
+            statut: { type: string, nullable: true, example: non_lu }
+            message: { type: string, nullable: true, example: 'Retard detecte pour Jean Dupont.' }
+            retard:
+              oneOf:
+                - { $ref: '#/components/schemas/Retard' }
+                - { type: 'null' }
+            absence:
+              oneOf:
+                - { $ref: '#/components/schemas/Absence' }
+                - { type: 'null' }
+            employe:
+              oneOf:
+                - { $ref: '#/components/schemas/EmployeSummary' }
+                - { type: 'null' }
+            traitePar:
+              oneOf:
+                - { $ref: '#/components/schemas/EmployeSummary' }
+                - { type: 'null' }
+        TerminalPointage:
+          type: object
+          properties:
+            id: { type: integer, example: 1 }
+            identifiant: { type: string, example: '01KP61YC0TJ09JG548ENTBAKV0' }
+            label: { type: string, nullable: true, example: 'Tablette accueil 01' }
+            actif: { type: boolean, example: true }
+            dernierAccesAt: { type: string, format: date-time, nullable: true, example: '2026-05-04T08:03:00+01:00' }
+            createdAt: { type: string, format: date-time, example: '2026-05-04T08:03:00+01:00' }
+            updatedAt: { type: string, format: date-time, example: '2026-05-04T08:03:00+01:00' }
     security:
       - Bearer: []
   areas:
