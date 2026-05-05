@@ -22,8 +22,8 @@ final class AbsenceDetectionService
         private CalendrierTravailResolverService $calendrierResolver,
         private AlerteNotifierService $alerteNotifierService,
         private EntityManagerInterface $entityManager,
-    ) {
-    }
+        private AlerteRealtimePublisher $alerteRealtimePublisher,
+    ) {}
 
     public function detecterPourDateDepartementEtPlage(
         \DateTimeImmutable $date,
@@ -52,6 +52,8 @@ final class AbsenceDetectionService
         $debutPlage = $this->combineDateAndTime($date, $plage->getHeureDebut());
         $finPlage = $this->combineDateAndTime($date, $plage->getHeureFin());
 
+        $alertesToPublish = [];
+
         foreach ($employes as $employe) {
             if ($this->absenceRepository->existsForEmployeDateAndOrdrePlage(
                 $employe,
@@ -79,10 +81,15 @@ final class AbsenceDetectionService
             $alerte = $this->alerteNotifierService->declencherAlerteAbsence($absence);
             $this->entityManager->persist($alerte);
 
+            $alertesToPublish[] = $alerte;
+
+
             $result->incrementCreated();
         }
 
         $this->entityManager->flush();
+
+        foreach ($alertesToPublish as $alerte) { $this->alerteRealtimePublisher->publishCreated($alerte);}
 
         return $result;
     }

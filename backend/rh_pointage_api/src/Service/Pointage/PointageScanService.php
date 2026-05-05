@@ -18,7 +18,8 @@ class PointageScanService
         private PointageTypeDecider $pointageTypeDecider,
         private RetardDetectionService $retardDetectionService,
         private PointageRepository $pointageRepository,
-        private AlerteNotifierService $alerteNotifierService
+        private AlerteNotifierService $alerteNotifierService,
+        private AlerteRealtimePublisher $alerteRealtimePublisher
     ) {}
 
     public function traiterScan(array $biometriquedata, \DateTimeImmutable $timeStamp): Pointage
@@ -40,6 +41,8 @@ class PointageScanService
         $pointage->setType($pointageType);
         $pointage->setTimeStamp($timeStamp);
 
+        $alerteToPublish = null;
+
         if ($pointage->isEntree()) {
             $retard = $this->retardDetectionService->creeRetardSiExiste($pointage);
 
@@ -48,11 +51,16 @@ class PointageScanService
 
                 $alerte = $this->alerteNotifierService->declencherAlerte($retard);
                 $this->entityManager->persist($alerte);
+
+                $alerteToPublish = $alerte;
+
             }
         }
 
         $this->entityManager->persist($pointage);
         $this->entityManager->flush();
+
+        if ($alerteToPublish !== null) { $this->alerteRealtimePublisher->publishCreated($alerteToPublish);}
 
         return $pointage;
     }
