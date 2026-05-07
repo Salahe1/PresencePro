@@ -29,6 +29,16 @@ class AlerteController extends AbstractController
         return new JsonResponse($responseData);
     }
 
+    #[Route('/{id}', methods: ['GET'])]
+    public function detailsAlerte(int $id): JsonResponse
+    {
+        $alerte = $this->alerteRepository->find($id);
+
+        if (!$alerte) { throw $this->createNotFoundException('Alerte introuvable.'); }
+
+        return $this->json($this->serializeAlerte($alerte));
+    }
+
     #[Route('/{id}/lu', methods: ['PATCH'])]
     public function marquerAlerteVue(int $id): JsonResponse
     {
