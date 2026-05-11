@@ -6,9 +6,12 @@ use App\Entity\Pointage;
 use App\Exception\ApiException;
 use App\Repository\PointageRepository;
 use App\Service\Alerte\AlerteNotifierService;
-use App\Service\Biometrique\BiometriqueMatchingService;
 use App\Service\Retard\RetardDetectionService;
+use App\Service\Alerte\AlerteRealtimePublisher;
+use App\Service\Biometrique\BiometriqueMatchingService;
+
 use Doctrine\ORM\EntityManagerInterface;
+
 
 class PointageScanService
 {
