@@ -2,15 +2,17 @@
 
 namespace App\Service\Absence;
 
-use App\DTO\DetectionAbsenceResult;
 use App\Entity\Absence;
 use App\Entity\Departement;
 use App\Entity\PlageHoraire;
+use App\DTO\DetectionAbsenceResult;
 use App\Repository\AbsenceRepository;
 use App\Repository\EmployeRepository;
 use App\Repository\PointageRepository;
 use App\Service\Alerte\AlerteNotifierService;
+use App\Service\Alerte\AlerteRealtimePublisher;
 use App\Service\Calendrier\CalendrierTravailResolverService;
+
 use Doctrine\ORM\EntityManagerInterface;
 
 final class AbsenceDetectionService

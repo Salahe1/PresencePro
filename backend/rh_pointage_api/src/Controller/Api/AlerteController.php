@@ -3,6 +3,8 @@
 namespace App\Controller\Api;
 
 use App\Entity\Alerte;
+use App\Entity\Utilisateur;
+use App\Repository\AlerteRepository;
 use App\Service\Alerte\AlerteQueryService;
 use App\Service\Alerte\AlerteCommandService;
 
@@ -15,7 +17,8 @@ use Symfony\Component\Routing\Annotation\Route;
 class AlerteController extends AbstractController 
 {
     public function __construct(private AlerteQueryService $alerteQueryService,
-                                private AlerteCommandService $alerteCommandService
+                                private AlerteCommandService $alerteCommandService,
+                                private AlerteRepository $alerteRepository
                                 ){}
 
     #[Route('', methods:['GET'])]
@@ -29,7 +32,7 @@ class AlerteController extends AbstractController
         return new JsonResponse($responseData);
     }
 
-    #[Route('/{id}', methods: ['GET'])]
+    #[Route('/{id}', requirements: ['id' => '\d+'], methods: ['GET'])]
     public function detailsAlerte(int $id): JsonResponse
     {
         $alerte = $this->alerteRepository->find($id);
@@ -39,7 +42,7 @@ class AlerteController extends AbstractController
         return $this->json($this->serializeAlerte($alerte));
     }
 
-    #[Route('/{id}/lu', methods: ['PATCH'])]
+    #[Route('/{id}/lu', requirements: ['id' => '\d+'], methods: ['PATCH'])]
     public function marquerAlerteVue(int $id): JsonResponse
     {
         $admin = $this->getUser();
