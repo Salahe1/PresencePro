@@ -34,18 +34,13 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <Routes>
+          
           <Route path="/login" element={<LoginPage />} />
 
-          <Route
-            path="/employes"
-            element={
-              <ProtectedRoute>
-                <EmployesListPage />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/employes" element={ <ProtectedRoute> <EmployesListPage /> </ProtectedRoute> } />
 
           <Route path="*" element={<Navigate to="/login" replace />} />
+
         </Routes>
       </BrowserRouter>
     </QueryClientProvider>
