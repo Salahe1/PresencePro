@@ -11,36 +11,35 @@ createRoot(document.getElementById('root')!).render(
 */
 import React from "react";
 import ReactDOM from "react-dom/client";
+import "./index.css";
+
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import { LoginPage } from "./features/auth/LoginPage";
-import { EmployesListPage } from "./features/employes/EmployesListPage";
+import { DashboardPage } from "./features/dashboard/DashboardPage";
+import { EmployesListPage } from "./features/employes/EmployesListPage/EmployesListPage";
+import { ProtectedRoute } from "./shared/components/ProtectedRoute";
+import { LayoutPrincipale } from "./shared/components/LayoutPrincipale";
 
 const queryClient = new QueryClient();
-
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const token = localStorage.getItem("access_token");
-
-  if (!token) {
-    return <Navigate to="/login" replace />;
-  }
-
-  return children;
-}
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <Routes>
-          
           <Route path="/login" element={<LoginPage />} />
 
-          <Route path="/employes" element={ <ProtectedRoute> <EmployesListPage /> </ProtectedRoute> } />
+          <Route element={<ProtectedRoute />}>
+            <Route element={<LayoutPrincipale />}>
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/dashboard" element={<DashboardPage />} />
+              <Route path="/employes" element={<EmployesListPage />} />
+            </Route>
+          </Route>
 
           <Route path="*" element={<Navigate to="/login" replace />} />
-
         </Routes>
       </BrowserRouter>
     </QueryClientProvider>

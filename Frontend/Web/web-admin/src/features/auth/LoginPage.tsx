@@ -23,7 +23,7 @@ export function LoginPage() {
 
       localStorage.setItem("access_token", data.token);
 
-      navigate("/employes");
+      navigate("/dashboard");
     } catch {
       setError("Email ou mot de passe incorrect.");
     } finally {
