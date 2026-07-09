@@ -21,6 +21,7 @@ import { DashboardPage } from "./features/dashboard/DashboardPage";
 import { EmployesListPage } from "./features/employes/EmployesListPage/EmployesListPage";
 import { ProtectedRoute } from "./shared/components/ProtectedRoute";
 import { LayoutPrincipale } from "./shared/components/LayoutPrincipale";
+import { DepartementsPage } from "./features/departements/DepartementsPage";
 
 const queryClient = new QueryClient();
 
@@ -36,6 +37,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/employes" element={<EmployesListPage />} />
+                <Route path="departements" element={<DepartementsPage />} />
             </Route>
           </Route>
 
