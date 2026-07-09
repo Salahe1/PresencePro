@@ -1,0 +1,351 @@
+.absences-page {
+  padding: 32px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.absences-page__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.absences-page__header-copy {
+  max-width: 760px;
+}
+
+.absences-page__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(30, 58, 138, 0.12);
+  color: #1d4ed8;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.absences-page__title {
+  margin: 12px 0 0;
+  font-size: clamp(2rem, 2.4vw, 2.8rem);
+  color: var(--text-h);
+  line-height: 1.05;
+}
+
+.absences-page__description {
+  margin: 12px 0 0;
+  color: var(--text);
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+.absences-page__stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.absences-page__stat-card {
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  padding: 22px 24px;
+  box-shadow: var(--shadow);
+}
+
+.absences-page__stat-label {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.absences-page__stat-value {
+  display: block;
+  margin-top: 12px;
+  font-size: 2.4rem;
+  line-height: 1;
+  color: var(--text-h);
+}
+
+.absences-page__stat-value--warning {
+  color: #b45309;
+}
+
+.absences-page__stat-value--success {
+  color: #047857;
+}
+
+.absences-page__stat-value--accent {
+  color: #1d4ed8;
+}
+
+.absences-page__stat-hint {
+  display: block;
+  margin-top: 10px;
+  font-size: 0.92rem;
+  color: var(--text);
+}
+
+.absences-page__list-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.absences-page__list-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.absences-page__panel-title {
+  margin: 0;
+  font-size: 1.2rem;
+  color: var(--text-h);
+}
+
+.absences-page__panel-description {
+  margin: 6px 0 0;
+  color: var(--text);
+  font-size: 0.92rem;
+}
+
+.absences-page__toolbar {
+  display: grid;
+  grid-template-columns: minmax(170px, 0.5fr) minmax(190px, 0.5fr) minmax(240px, 1fr);
+  gap: 14px;
+  align-items: end;
+}
+
+.absences-page__search {
+  position: relative;
+  display: block;
+}
+
+.absences-page__search-icon {
+  position: absolute;
+  top: 50%;
+  left: 14px;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  color: #94a3b8;
+  pointer-events: none;
+}
+
+.absences-page__search-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.absences-page__search input {
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--text-h);
+  font: inherit;
+  padding: 0 14px 0 42px;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.absences-page__search input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+}
+
+.absences-page__employee {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 220px;
+}
+
+.absences-page__avatar {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+.absences-page__employee-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.absences-page__employee-copy strong {
+  color: var(--text-h);
+  font-size: 0.98rem;
+}
+
+.absences-page__employee-copy small {
+  color: var(--text);
+  font-size: 0.84rem;
+}
+
+.absences-page__date-cell,
+.absences-page__time-range {
+  font-variant-numeric: tabular-nums;
+}
+
+.absences-page__status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 96px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.absences-page__muted-text {
+  color: var(--text);
+  font-size: 0.88rem;
+}
+
+.absences-page__error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 320px;
+  padding: 40px 24px;
+  text-align: center;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: var(--shadow);
+}
+
+.absences-page__error-state h2 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.absences-page__error-state p {
+  max-width: 420px;
+  color: var(--text);
+  line-height: 1.6;
+}
+
+.absences-page__error-icon {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: rgba(220, 38, 38, 0.1);
+  color: #b91c1c;
+}
+
+.absences-page__error-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.absences-page__skeleton {
+  border-radius: 12px;
+  background: linear-gradient(
+    90deg,
+    rgba(148, 163, 184, 0.14) 0%,
+    rgba(148, 163, 184, 0.28) 50%,
+    rgba(148, 163, 184, 0.14) 100%
+  );
+  background-size: 200% 100%;
+  animation: absences-page-shimmer 1.4s ease-in-out infinite;
+}
+
+.absences-page__skeleton--eyebrow {
+  width: 150px;
+  height: 32px;
+  border-radius: 999px;
+}
+
+.absences-page__skeleton--title {
+  width: min(320px, 70%);
+  height: 42px;
+  margin-top: 14px;
+}
+
+.absences-page__skeleton--description {
+  width: min(560px, 90%);
+  height: 20px;
+  margin-top: 14px;
+}
+
+.absences-page__skeleton--stat {
+  min-height: 132px;
+  border-radius: 22px;
+}
+
+.absences-page__skeleton--panel {
+  min-height: 220px;
+  border-radius: 18px;
+}
+
+@keyframes absences-page-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@media (max-width: 1100px) {
+  .absences-page__stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .absences-page__toolbar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .absences-page__search {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 768px) {
+  .absences-page {
+    padding: 20px 16px;
+  }
+
+  .absences-page__stats,
+  .absences-page__toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .absences-page__search {
+    grid-column: auto;
+  }
+}

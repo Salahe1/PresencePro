@@ -14,7 +14,7 @@ const navItems = [
   },
   {
     to: "/employes",
-    label: "Employés",
+    label: "Employes",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
         <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" strokeLinecap="round" strokeLinejoin="round" />
@@ -25,10 +25,30 @@ const navItems = [
   },
   {
     to: "/departements",
-    label: "Départements",
+    label: "Departements",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
         <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7M16 3h-1a4 4 0 0 0-4 4v1M16 3a4 4 0 0 1 4 4v1M16 3a4 4 0 0 0-4-4h-1a4 4 0 0 0-4 4v1M5.5 21h14a2.5 2.5 0 0 1-2.5-2.5v-1.5a2.5 2.5 0 0 1 2.5-2.5h-14a2.5 2.5 0 0 1-2.5 2.5V19a2.5 2.5 0 0 1 2.5 2.5Z" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+  },
+  {
+    to: "/absences",
+    label: "Absences",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+        <path d="M8 2v4M16 2v4M3 9h18M5 5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="m9 15 2 2 4-5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+  },
+  {
+    to: "/retards",
+    label: "Retards",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 7v5l3 2" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     ),
   },
@@ -80,16 +100,16 @@ export function Sidebar({ collapsed /* , onToggle  */}: SidebarProps) {
 
       <div className="sidebar__footer">
         <p className="sidebar__footer-note">
-          Tableau de bord interne — accès réservé aux administrateurs.
+          Tableau de bord interne - acces reserve aux administrateurs.
         </p>
 
         {/* <button
           type="button"
           className="sidebar__toggle"
           onClick={onToggle}
-          aria-label={collapsed ? "Développer le menu" : "Réduire le menu"}
+          aria-label={collapsed ? "Developper le menu" : "Reduire le menu"}
           aria-expanded={!collapsed}
-        > 
+        >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
             {collapsed ? (
               <path d="M9 18l6-6-6-6" strokeLinecap="round" strokeLinejoin="round" />
@@ -98,7 +118,7 @@ export function Sidebar({ collapsed /* , onToggle  */}: SidebarProps) {
             )}
           </svg>
           <span className="sidebar__toggle-label">
-            {collapsed ? "Développer" : "Réduire"}
+            {collapsed ? "Developper" : "Reduire"}
           </span>
         </button>*/}
       </div>
