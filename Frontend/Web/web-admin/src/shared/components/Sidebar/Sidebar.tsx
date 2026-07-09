@@ -23,6 +23,15 @@ const navItems = [
       </svg>
     ),
   },
+  {
+    to: "/departements",
+    label: "Départements",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+        <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7M16 3h-1a4 4 0 0 0-4 4v1M16 3a4 4 0 0 1 4 4v1M16 3a4 4 0 0 0-4-4h-1a4 4 0 0 0-4 4v1M5.5 21h14a2.5 2.5 0 0 1-2.5-2.5v-1.5a2.5 2.5 0 0 1 2.5-2.5h-14a2.5 2.5 0 0 1-2.5 2.5V19a2.5 2.5 0 0 1 2.5 2.5Z" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+  },
 ];
 
 type SidebarProps = {
@@ -30,7 +39,7 @@ type SidebarProps = {
   onToggle: () => void;
 };
 
-export function Sidebar({ collapsed, onToggle }: SidebarProps) {
+export function Sidebar({ collapsed /* , onToggle  */}: SidebarProps) {
   return (
     <aside className={`sidebar${collapsed ? " sidebar--collapsed" : ""}`}>
       <div className="sidebar__brand">
