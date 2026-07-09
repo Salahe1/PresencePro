@@ -22,6 +22,8 @@ import { EmployesListPage } from "./features/employes/EmployesListPage/EmployesL
 import { ProtectedRoute } from "./shared/components/ProtectedRoute";
 import { LayoutPrincipale } from "./shared/components/LayoutPrincipale";
 import { DepartementsPage } from "./features/departements/DepartementsPage";
+import { AbsencesPage } from "./features/absences/AbsencesPage";
+import { RetardsPage } from "./features/retards/RetardsPage";
 
 const queryClient = new QueryClient();
 
@@ -37,7 +39,9 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/employes" element={<EmployesListPage />} />
-                <Route path="departements" element={<DepartementsPage />} />
+              <Route path="/departements" element={<DepartementsPage />} />
+              <Route path="/absences" element={<AbsencesPage />} />
+              <Route path="/retards" element={<RetardsPage />} />
             </Route>
           </Route>
 

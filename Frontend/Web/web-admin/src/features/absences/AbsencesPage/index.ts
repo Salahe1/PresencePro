@@ -1,0 +1,1 @@
+export { AbsencesPage } from "./AbsencesPage";
